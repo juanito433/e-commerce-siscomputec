@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: siscomputec_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+    networks:
+      - siscomputec_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: siscomputec_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - siscomputec_net
+
+  database:
+    image: mysql:8.0
+    container_name: siscomputec_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: siscomputec_db
+      MYSQL_USER: siscomputec_user
+      MYSQL_PASSWORD: secret_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - siscomputec_net
+
+networks:
+  siscomputec_net:
+    driver: bridge
+
+volumes:
+  db_data:
