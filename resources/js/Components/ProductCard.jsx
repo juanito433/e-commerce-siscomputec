@@ -1,12 +1,13 @@
 import React from 'react';
+import { Link } from '@inertiajs/react';
 
-export default function ProductCard({ name, category, price, imageUrl, isNew, delay }) {
+export default function ProductCard({ id, name, category, price, sku, imageUrl, isNew, delay }) {
     return (
         <div
-            className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl hover:-translate-y-1 sm:hover:-translate-y-2 transition-all duration-300 animate-fade-in-up flex flex-col justify-between"
+            className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             style={{ animationDelay: `${delay}ms` }}
         >
-            {/* Contenedor de Imagen adaptativo */}
+            {/* Contenedor de Imagen */}
             <div className="relative h-48 sm:h-56 bg-gray-50 flex items-center justify-center overflow-hidden">
                 <img
                     src={imageUrl || 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=500&q=80'}
@@ -15,7 +16,7 @@ export default function ProductCard({ name, category, price, imageUrl, isNew, de
                 />
 
                 {isNew && (
-                    <div className="absolute top-3 right-3 bg-blue-600 text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-lg z-10 tracking-wider">
+                    <div className="absolute top-3 right-3 bg-blue-600 text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full shadow-lg z-10 tracking-wider">
                         NUEVO
                     </div>
                 )}
@@ -23,14 +24,25 @@ export default function ProductCard({ name, category, price, imageUrl, isNew, de
 
             {/* Información del Producto */}
             <div className="p-4 sm:p-5 flex flex-col flex-grow">
-                <p className="text-blue-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1">{category}</p>
+                <div className="flex justify-between items-start gap-2 mb-1">
+                    <p className="text-blue-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{category}</p>
+                    <span className="font-mono text-[10px] sm:text-xs font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 tracking-wide">
+                        SKU: {sku || 'N/D'}
+                    </span>
+                </div>
+
                 <h3 className="font-extrabold text-gray-900 text-base sm:text-lg mb-3 line-clamp-2 leading-tight">{name}</h3>
 
                 <div className="flex justify-between items-center mt-auto pt-3 sm:pt-4 border-t border-gray-50 gap-2">
                     <span className="font-black text-xl sm:text-2xl text-gray-900">${Number(price).toFixed(2)}</span>
-                    <button className="bg-gray-900 text-white px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-600 transition-colors duration-300 shadow-md hover:shadow-blue-500/30 active:scale-95">
-                        Agregar
-                    </button>
+
+                    {/* ENLACE A DETALLES */}
+                    <Link
+                        href={`/products/${id}`}
+                        className="bg-gray-900 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-600 transition-colors duration-300 shadow-md cursor-pointer"
+                    >
+                        Ver Detalles
+                    </Link>
                 </div>
             </div>
         </div>

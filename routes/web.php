@@ -6,16 +6,28 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\CategoryController;
-
+use App\Models\Category;
+use App\Models\Product;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
+        'products' => Product::with(['category', 'images'])->where('is_active', true)->latest()->get(),
+        'categories' => Category::all(),
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('home');
+
+// RUTA PÚBLICA: Ver detalles de un producto específico en la tienda
+Route::get('/products/{product}', function (Product $product) {
+    $product->load(['category', 'images']);
+
+    return Inertia::render('Products/Show', [
+        'product' => $product,
+        'auth' => Auth::user(), // <-- Cambiado aquí
+    ]);
+})->name('products.show');
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
@@ -27,22 +39,17 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-
-// Rutas de administración temporales sin middleware
+// Rutas de administración
 Route::prefix('admin')->name('admin.')->group(function () {
-
     Route::get('/dashboard', [ProductController::class, 'index'])->name('dashboard');
     Route::post('/products', [ProductController::class, 'store'])->name('products.store');
-    Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+    Route::match(['put', 'post'], '/products/{product}', [ProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
-    /* Categorias*/
+    /* Categorias */
     Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
     Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 });
-
-
-
 
 require __DIR__ . '/auth.php';

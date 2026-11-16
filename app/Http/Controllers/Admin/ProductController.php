@@ -79,7 +79,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
-            'sku' => 'nullable|string|unique:products,sku,' . $product->id, // Ignorar el SKU actual del producto
+            'sku' => 'required|string|unique:products,sku,' . $product->id,
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string',
@@ -95,16 +95,14 @@ class ProductController extends Controller
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
             'stock' => $validated['stock'],
-            'sku' => $validated['sku'] ?? null,
+            'sku' => $validated['sku'],
             'is_new' => $request->boolean('is_new'),
             'is_active' => $request->boolean('is_active'),
         ]);
 
-        // Si se selecciona una nueva imagen en la edición
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
 
-            // Actualiza o crea la imagen principal asociada
             $product->images()->updateOrCreate(
                 ['is_primary' => true],
                 ['image_url' => '/storage/' . $path]
@@ -114,11 +112,9 @@ class ProductController extends Controller
         return redirect()->back()->with('success', '¡Producto actualizado correctamente!');
     }
 
-    // Eliminar un producto del inventario
     public function destroy(Product $product)
     {
         $product->delete();
-
         return redirect()->back()->with('success', '¡Producto eliminado del sistema!');
     }
 }
