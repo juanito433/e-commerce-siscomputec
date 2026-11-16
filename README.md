@@ -1,58 +1,149 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🖥️ SISCOMPUTEC — Sistema de Gestión de Taller y E-commerce de Hardware
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Siscomputec** es una plataforma web integral diseñada para la administración de inventario, clasificación de rubros tecnológicos y exhibición de catálogo de hardware, componentes y servicios técnicos.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Stack Tecnológico
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+El proyecto está construido bajo una arquitectura moderna de desarrollo web full-stack:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+* **Backend:** PHP 8.3 + Laravel (Arquitectura MVC, Eloquent ORM).
+* **Frontend:** React.js con **Inertia.js** (permitiendo una SPA monolítica sin API REST separada).
+* **Estilos y UI:** Tailwind CSS (diseño moderno, responsivo y adaptado a dispositivos móviles y de escritorio).
+* **Empaquetador de Assets:** Vite.
+* **Base de Datos:** MySQL.
+* **Entorno de Ejecución:** Docker & Docker Compose (optimizado sobre WSL / Linux).
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 📁 Estructura del Proyecto
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+La arquitectura del código se encuentra modularizada para facilitar el mantenimiento, la escalabilidad y las correcciones:
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```text
+siscomputec/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   └── Admin/
+│   │   │       ├── ProductController.php      # CRUD completo, subida de imágenes y manejo de SKU
+│   │   │       └── CategoryController.php     # Gestión de categorías y autodetección de iconos SVG
+│   │   └── ...
+│   └── Models/
+│       ├── Product.php                        # Modelo de productos y relaciones Eloquent
+│       ├── Category.php                       # Modelo de categorías, slugs e iconos
+│       └── ProductImage.php                   # Gestión de imágenes principales y asociadas
+├── database/
+│   └── migrations/                            # Migraciones de BD (products, categories, product_images)
+├── resources/
+│   └── js/
+│       ├── Components/
+│       │   └── ProductCard.jsx                # Tarjeta de producto interactiva para la tienda pública
+│       └── Pages/
+│           ├── Welcome.jsx                    # Tienda pública, filtros dinámicos y buscador por SKU/nombre
+│           ├── Products/
+│           │   └── Show.jsx                   # Vista detallada de productos y selector de cantidades
+│           └── Admin/
+│               ├── Dashboard.jsx              # Panel principal de administración orquestador
+│               └── Partials/
+│                   ├── ProductTable.jsx       # Tabla modular de inventario con SKU destacado
+│                   └── ProductModal.jsx       # Modal reutilizable para crear y editar productos
+└── routes/
+    └── web.php                                # Rutas web públicas y del panel administrativo con prefijo
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## ✨ Características Principales Implementadas
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. **Panel de Administración Modular:**
+   * Gestión completa (CRUD) de productos y servicios con soporte para almacenamiento físico de imágenes.
+   * Identificación visual de productos mediante **SKU destacado** en formato monoespaciado y visible ante distintas resoluciones.
+   * Control de estados comerciales (*Activo, Oculto, Novedad, Stock*).
+   * Interfaz dividida en componentes parciales (`ProductTable`, `ProductModal`) para evitar archivos pesados.
 
-## Code of Conduct
+2. **Autodetección Inteligente de Iconos para Categorías:**
+   * El backend analiza de forma automática las palabras clave del nombre de la categoría al crearse (ej. *Monitores, Mouse, Teclados, Audio, Redes, Almacenamiento, Memorias, Fundas, Componentes, Impresoras*) e inyecta el icono vectorial SVG correspondiente sin configuraciones manuales.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+3. **Tienda Pública y Catálogo Dinámico (`Welcome.jsx`):**
+   * Conectado en tiempo real a la base de datos de Laravel.
+   * **Buscador avanzado en tiempo real:** Permite filtrar instantáneamente tanto por nombre comercial como por **código SKU**.
+   * Filtros laterales dinámicos por categoría y rango de precios.
+   * Ordenamiento flexible del catálogo (*Relevancia, Lo más nuevo, Menor a mayor precio, Mayor a menor precio*).
 
-## Security Vulnerabilities
+4. **Vista de Detalles del Producto (`Products/Show.jsx`):**
+   * Visualización fotográfica a gran escala con indicador de novedad.
+   * Control de stock disponible en tiempo real y selector interactivo de cantidades.
+   * Integración directa con los botones de acción para compra o cotización.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## ⚙️ Guía de Instalación en un Nuevo Equipo (Entorno Docker)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Sigue estos pasos para clonar y poner en marcha el proyecto en una máquina nueva:
+
+### 1. Requisitos Previos
+* Git instalado.
+* Docker y Docker Compose instalados y en ejecución (recomendado con WSL en Windows).
+
+### 2. Clonar el Repositorio
+```bash
+git clone <url-del-repositorio>
+cd siscomputec
+```
+
+### 3. Configurar el Archivo de Entorno (`.env`)
+Duplica el archivo de configuración de ejemplo:
+```bash
+cp .env.example .env
+```
+Configura las credenciales de tu base de datos acorde a tu entorno Docker:
+```env
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=siscomputec
+DB_USERNAME=sail
+DB_PASSWORD=password
+```
+
+### 4. Levantar los Contenedores Docker
+Inicia los servicios en segundo plano:
+```bash
+docker compose up -d
+```
+
+### 5. Instalar Dependencias de PHP y Configurar Aplicación
+Instala las dependencias del backend dentro del contenedor:
+```bash
+docker compose app composer install
+```
+Genera la llave de encripción:
+```bash
+docker compose exec app php artisan key:generate
+```
+
+### 6. Ejecutar Migraciones y Enlace de Almacenamiento
+Crea las tablas en la base de datos y genera el enlace simbólico para las imágenes de productos:
+```bash
+docker compose exec app php artisan migrate --seed
+docker compose exec app php artisan storage:link
+```
+
+### 7. Ajustar Permisos de Almacenamiento y Temporales
+Otorga los permisos correctos para evitar errores de escritura en el contenedor:
+```bash
+docker compose exec --user root app chmod 1777 /tmp
+docker compose exec app chmod -R 775 storage bootstrap/cache
+docker compose exec app chown -R www-data:www-data storage bootstrap/cache
+```
+
+### 8. Compilar Assets y Ejecutar el Servidor de Desarrollo
+Instala las dependencias del frontend y arranca Vite:
+```bash
+docker compose exec app npm install
+docker compose exec app npm run dev
+```
+
+¡Listo! Ya puedes acceder a la tienda pública en `http://localhost:8000` y al panel de administración en `http://localhost:8000/admin/dashboard`.
