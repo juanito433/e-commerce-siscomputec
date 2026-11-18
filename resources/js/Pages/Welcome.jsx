@@ -76,19 +76,11 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                             href="/"
                             className="text-lg sm:text-2xl font-black text-blue-700 tracking-tight flex items-center gap-2"
                         >
-                            <svg
-                                className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2.5"
-                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-                                />
-                            </svg>
+                            <img
+                                src="/images/logo.svg"
+                                alt="Logo de la empresa"
+                                className="h-8 sm:h-10 w-auto mx-auto object-contain"
+                            />{" "}
                             <span className="tracking-tighter">
                                 SISCOMPUTEC
                             </span>
@@ -98,10 +90,10 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                         <div className="flex items-center gap-2 sm:hidden">
                             {auth?.user ? (
                                 <Link
-                                    href={route("admin.products.index")}
+                                    href={route("admin.dashboard")}
                                     className="font-bold text-xs text-slate-700 hover:text-blue-600"
                                 >
-                                    Panel
+                                    {auth.user.role === 'admin' ? 'Panel Admin' : `Hola, ${auth.user.name}`}
                                 </Link>
                             ) : (
                                 <>
@@ -151,12 +143,19 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                     {/* Botones de Auth Escritorio */}
                     <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
                         {auth?.user ? (
-                            <Link
-                                href={route("admin.products.index")}
-                                className="font-bold text-sm text-slate-700 hover:text-blue-600 transition"
-                            >
-                                Panel Admin
-                            </Link>
+                            <div className="flex items-center gap-3">
+                                {auth.user.role === 'admin' && (
+                                    <Link
+                                        href={route("admin.dashboard")}
+                                        className="font-bold text-sm text-slate-700 hover:text-blue-600 transition"
+                                    >
+                                        Panel Admin
+                                    </Link>
+                                )}
+                                <span className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200">
+                                    {auth.user.name} ({auth.user.role})
+                                </span>
+                            </div>
                         ) : (
                             <>
                                 <Link
@@ -354,7 +353,7 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                                 return (
                                     <ProductCard
                                         key={`${product.id}-${sortOrder}`}
-                                        id={product.id} // <--- ASEGÚRATE DE PASAR EL ID
+                                        id={product.id}
                                         name={product.name}
                                         category={
                                             product.category?.name || "General"

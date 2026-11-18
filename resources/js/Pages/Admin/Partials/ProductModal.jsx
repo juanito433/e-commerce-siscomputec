@@ -1,4 +1,15 @@
+import { useEffect } from 'react';
+import { Head, Link } from '@inertiajs/react';
+
 export default function ProductModal({ isOpen, onClose, form, onSubmit, categories, isEditing }) {
+
+    // Autoseleccionar la primera categoría si el formulario no tiene una asignada y hay categorías disponibles
+    useEffect(() => {
+        if (isOpen && !form.data.category_id && categories && categories.length > 0) {
+            form.setData('category_id', categories[0].id);
+        }
+    }, [isOpen, categories]);
+
     if (!isOpen) return null;
 
     return (
@@ -34,12 +45,13 @@ export default function ProductModal({ isOpen, onClose, form, onSubmit, categori
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 cursor-pointer"
                                 required
                             >
+                                <option value="">Selecciona una categoría...</option>
                                 {(categories || []).length > 0 ? (
                                     categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))
                                 ) : (
-                                    <option value="">Crea una categoría primero</option>
+                                    <option value="" disabled>Crea una categoría primero</option>
                                 )}
                             </select>
                             {form.errors.category_id && <span className="text-rose-500 text-xs mt-1 block">{form.errors.category_id}</span>}
