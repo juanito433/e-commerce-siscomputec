@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -17,8 +18,8 @@ class User extends Authenticatable
         'last_name',
         'email',
         'password',
-        'role',      
-        'phone',     
+        'role',
+        'phone',
     ];
 
     protected $hidden = [
@@ -47,5 +48,14 @@ class User extends Authenticatable
     public function addresses()
     {
         return $this->hasMany(UserAddress::class);
+    }
+    public function favorites(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'favorites')->withTimestamps();
+    }
+
+    public function hasFavorite(int $productId): bool
+    {
+        return $this->favorites()->where('product_id', $productId)->exists();
     }
 }

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Head, Link, router } from "@inertiajs/react";
 import ProductCard from "../Components/ProductCard";
 
-export default function Welcome({ auth, products = [], categories = [] }) {
+export default function Welcome({ auth, products = [], categories = [],favoriteIds = [] }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [minPrice, setMinPrice] = useState("");
@@ -99,46 +99,73 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                                 <div className="relative">
                                     <button
                                         type="button"
-                                        onClick={() => setUserMenuOpen((prev) => !prev)}
+                                        onClick={() =>
+                                            setUserMenuOpen((prev) => !prev)
+                                        }
                                         className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-full border border-slate-200 flex items-center gap-1.5 cursor-pointer"
                                     >
                                         <span>{auth.user.name}</span>
-                                        <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                        <svg
+                                            className="w-3.5 h-3.5 text-slate-500"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2.5"
+                                                d="M19 9l-7 7-7-7"
+                                            />
                                         </svg>
                                     </button>
 
                                     {userMenuOpen && (
                                         <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-xs">
                                             <div className="px-4 py-2 border-b border-slate-100">
-                                                <p className="font-black text-slate-900 truncate">{auth.user.name} {auth.user.last_name || ""}</p>
-                                                <p className="text-[11px] text-slate-400 truncate">{auth.user.email}</p>
+                                                <p className="font-black text-slate-900 truncate">
+                                                    {auth.user.name}{" "}
+                                                    {auth.user.last_name || ""}
+                                                </p>
+                                                <p className="text-[11px] text-slate-400 truncate">
+                                                    {auth.user.email}
+                                                </p>
                                             </div>
                                             <Link
                                                 href="/mi-cuenta?tab=profile"
-                                                onClick={() => setUserMenuOpen(false)}
+                                                onClick={() =>
+                                                    setUserMenuOpen(false)
+                                                }
                                                 className="block px-4 py-2 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                                             >
                                                 Mi Perfil
                                             </Link>
                                             <Link
                                                 href="/mi-cuenta?tab=orders"
-                                                onClick={() => setUserMenuOpen(false)}
+                                                onClick={() =>
+                                                    setUserMenuOpen(false)
+                                                }
                                                 className="block px-4 py-2 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                                             >
                                                 Órdenes y Compras
                                             </Link>
                                             <Link
                                                 href="/mi-cuenta?tab=favorites"
-                                                onClick={() => setUserMenuOpen(false)}
+                                                onClick={() =>
+                                                    setUserMenuOpen(false)
+                                                }
                                                 className="block px-4 py-2 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700"
                                             >
                                                 Me Gustas / Guardados
                                             </Link>
                                             {auth.user.role === "admin" && (
                                                 <Link
-                                                    href={route("admin.dashboard")}
-                                                    onClick={() => setUserMenuOpen(false)}
+                                                    href={route(
+                                                        "admin.dashboard",
+                                                    )}
+                                                    onClick={() =>
+                                                        setUserMenuOpen(false)
+                                                    }
                                                     className="block px-4 py-2 font-extrabold text-blue-700 bg-blue-50/60 hover:bg-blue-100 mt-1"
                                                 >
                                                     Panel Admin
@@ -205,13 +232,25 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                             <div className="relative">
                                 <button
                                     type="button"
-                                    onClick={() => setUserMenuOpen((prev) => !prev)}
+                                    onClick={() =>
+                                        setUserMenuOpen((prev) => !prev)
+                                    }
                                     className="bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm px-4 py-2 rounded-full border border-slate-200 shadow-2xs flex items-center gap-2 transition cursor-pointer"
                                 >
                                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     <span>{auth.user.name}</span>
-                                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                    <svg
+                                        className="w-4 h-4 text-slate-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2.5"
+                                            d="M19 9l-7 7-7-7"
+                                        />
                                     </svg>
                                 </button>
 
@@ -219,40 +258,57 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                                     <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-sm">
                                         <div className="px-4 py-2.5 border-b border-slate-100">
                                             <p className="font-black text-slate-900 truncate">
-                                                {auth.user.name} {auth.user.last_name || ""}
+                                                {auth.user.name}{" "}
+                                                {auth.user.last_name || ""}
                                             </p>
-                                            <p className="text-xs text-slate-400 truncate">{auth.user.email}</p>
+                                            <p className="text-xs text-slate-400 truncate">
+                                                {auth.user.email}
+                                            </p>
                                         </div>
 
                                         <Link
                                             href="/mi-cuenta?tab=profile"
-                                            onClick={() => setUserMenuOpen(false)}
+                                            onClick={() =>
+                                                setUserMenuOpen(false)
+                                            }
                                             className="flex items-center justify-between px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
                                         >
                                             <span>Mi Perfil</span>
-                                            <span className="text-slate-400">→</span>
+                                            <span className="text-slate-400">
+                                                →
+                                            </span>
                                         </Link>
                                         <Link
                                             href="/mi-cuenta?tab=orders"
-                                            onClick={() => setUserMenuOpen(false)}
+                                            onClick={() =>
+                                                setUserMenuOpen(false)
+                                            }
                                             className="flex items-center justify-between px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
                                         >
                                             <span>Mis Órdenes y Compras</span>
-                                            <span className="text-slate-400">→</span>
+                                            <span className="text-slate-400">
+                                                →
+                                            </span>
                                         </Link>
                                         <Link
                                             href="/mi-cuenta?tab=favorites"
-                                            onClick={() => setUserMenuOpen(false)}
+                                            onClick={() =>
+                                                setUserMenuOpen(false)
+                                            }
                                             className="flex items-center justify-between px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
                                         >
                                             <span>Me Gustas / Guardados</span>
-                                            <span className="text-slate-400">→</span>
+                                            <span className="text-slate-400">
+                                                →
+                                            </span>
                                         </Link>
 
                                         {auth.user.role === "admin" && (
                                             <Link
                                                 href={route("admin.dashboard")}
-                                                onClick={() => setUserMenuOpen(false)}
+                                                onClick={() =>
+                                                    setUserMenuOpen(false)
+                                                }
                                                 className="flex items-center justify-between px-4 py-2.5 text-xs font-extrabold text-blue-700 bg-blue-50/70 hover:bg-blue-100 border-t border-slate-100 mt-1 transition"
                                             >
                                                 <span>Panel Admin</span>
@@ -476,6 +532,9 @@ export default function Welcome({ auth, products = [], categories = [] }) {
                                         sku={product.sku}
                                         imageUrl={primaryImage}
                                         isNew={product.is_new}
+                                        isFavorite={favoriteIds.includes(
+                                            product.id,
+                                        )}
                                         delay={index * 40}
                                     />
                                 );

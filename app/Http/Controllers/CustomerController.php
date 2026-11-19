@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -15,6 +14,7 @@ class CustomerController extends Controller
      */
     public function index()
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
         $orders = [];
@@ -24,7 +24,10 @@ class CustomerController extends Controller
 
         $favorites = [];
         if (Schema::hasTable('favorites') && method_exists($user, 'favorites')) {
-            $favorites = $user->favorites()->with(['category', 'images'])->latest()->get();
+            $favorites = $user->favorites()
+                ->with(['category', 'images'])
+                ->latest('favorites.created_at')
+                ->get();
         }
 
         return Inertia::render('Profile/CustomerDashboard', [
@@ -41,13 +44,15 @@ class CustomerController extends Controller
      */
     public function updateProfile(Request $request)
     {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'last_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
         ]);
 
-        $user = User::findOrFail($request->user()->id);
         $user->update($validated);
 
         return redirect()->back()->with('success', 'Tus datos de perfil se actualizaron correctamente.');
