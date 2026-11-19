@@ -1,14 +1,24 @@
 import { useEffect, useState } from "react";
-import { Head, Link, router } from "@inertiajs/react";
+import { Head, Link, router, usePage } from "@inertiajs/react";
+import AddedToCartDrawer from "../../Components/Customer/AddedToCartDrawer";
 
 export default function Show({
     auth,
     product,
+    relatedProducts = [],
     isFavorite = false,
     favoritesCount = 0,
     cartCount = 0,
+    cartItem = null,
 }) {
+    const [activeCartItem, setActiveCartItem] = useState(cartItem);
+
+    useEffect(() => {
+        setActiveCartItem(cartItem);
+    }, [cartItem]);
+    const { flash, errors } = usePage().props;
     const user = auth?.user || null;
+    const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
     const images = product?.images || [];
     const primaryImage =
         images.find((img) => img.is_primary)?.image_url ||
@@ -17,9 +27,14 @@ export default function Show({
 
     const [selectedImage, setSelectedImage] = useState(primaryImage);
     const [quantity, setQuantity] = useState(1);
+    const [addingToCart, setAddingToCart] = useState(false);
     const [addedQty, setAddedQty] = useState(0);
-    const [currentCartCount, setCurrentCartCount] = useState(Number(cartCount || 0));
-    const [currentFavoritesCount, setCurrentFavoritesCount] = useState(Number(favoritesCount || 0));
+    const [currentCartCount, setCurrentCartCount] = useState(
+        Number(cartCount || 0),
+    );
+    const [currentFavoritesCount, setCurrentFavoritesCount] = useState(
+        Number(favoritesCount || 0),
+    );
 
     useEffect(() => {
         setCurrentFavoritesCount(Number(favoritesCount || 0));
@@ -49,7 +64,7 @@ export default function Show({
         }
 
         setCurrentFavoritesCount((prev) =>
-            isFavorite ? Math.max(0, prev - 1) : prev + 1
+            isFavorite ? Math.max(0, prev - 1) : prev + 1,
         );
 
         router.post(
@@ -60,7 +75,7 @@ export default function Show({
                 onError: () => {
                     setCurrentFavoritesCount(Number(favoritesCount || 0));
                 },
-            }
+            },
         );
     };
 
@@ -77,10 +92,21 @@ export default function Show({
             router.visit(route("login"));
             return;
         }
-        if (!inStock) return;
+        if (!inStock || addingToCart) return;
 
-        setAddedQty((prev) => prev + quantity);
-        setCurrentCartCount((prev) => prev + quantity);
+        router.post(
+            route("cart.store", product.id),
+            { quantity },
+            {
+                preserveScroll: true,
+                onStart: () => setAddingToCart(true),
+                onFinish: () => setAddingToCart(false),
+                onSuccess: () => {
+                    setAddedQty(quantity);
+                    setCartDrawerOpen(true);
+                },
+            },
+        );
     };
 
     const handleBuyNow = () => {
@@ -88,10 +114,19 @@ export default function Show({
             router.visit(route("login"));
             return;
         }
-        if (!inStock) return;
+        if (!inStock || addingToCart) return;
 
-        alert(
-            `Compra directa: ${quantity} x ${product.name} — Total: $${totalPrice.toFixed(2)} MXN`
+        // Agrega al carrito en base de datos y redirige directo a /carrito
+        router.post(
+            route("cart.store", product.id),
+            { quantity },
+            {
+                onStart: () => setAddingToCart(true),
+                onFinish: () => setAddingToCart(false),
+                onSuccess: () => {
+                    router.visit(route("cart.index"));
+                },
+            },
         );
     };
 
@@ -111,17 +146,27 @@ export default function Show({
                             alt="Siscomputec"
                             className="h-7 sm:h-9 w-auto object-contain flex-shrink-0"
                         />
-                        <span className="tracking-tighter truncate">SISCOMPUTEC</span>
+                        <span className="tracking-tighter truncate">
+                            SISCOMPUTEC
+                        </span>
                     </Link>
 
                     {/* Derecha: Favoritos, Carrito y Nombre del Cliente */}
                     <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
                         <Link
-                            href={user ? "/mi-cuenta?tab=favorites" : route("login")}
+                            href={
+                                user
+                                    ? "/mi-cuenta?tab=favorites"
+                                    : route("login")
+                            }
                             title="Ver guardados"
                             className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-600 border border-slate-200/80 transition"
                         >
-                            <svg className="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 24 24">
+                            <svg
+                                className="w-4 h-4 text-rose-500"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                            >
                                 <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                             </svg>
                             <span className="hidden md:inline">Favoritos</span>
@@ -130,20 +175,33 @@ export default function Show({
                             </span>
                         </Link>
 
-                        <button
-                            type="button"
-                            onClick={handleAddToCart}
-                            title="Ver carrito"
-                            className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 border border-slate-200/80 transition cursor-pointer"
+                        <Link
+                            href={user ? "/mi-cuenta?tab=cart" : route("login")}
+                            title={
+                                user
+                                    ? "Ver carrito"
+                                    : "Inicia sesión para ver tu carrito"
+                            }
+                            className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 border border-slate-200/80 transition"
                         >
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            <svg
+                                className="w-4 h-4 text-blue-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                                />
                             </svg>
                             <span className="hidden md:inline">Carrito</span>
                             <span className="bg-blue-600 text-white text-[11px] font-black px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center">
                                 {currentCartCount}
                             </span>
-                        </button>
+                        </Link>
 
                         {user ? (
                             <Link
@@ -152,7 +210,9 @@ export default function Show({
                                 className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-700 hover:bg-slate-100/80 transition max-w-[115px] sm:max-w-[150px]"
                             >
                                 <span className="truncate">{user.name}</span>
-                                <span className="text-[11px] text-slate-400">›</span>
+                                <span className="text-[11px] text-slate-400">
+                                    ›
+                                </span>
                             </Link>
                         ) : (
                             <Link
@@ -167,7 +227,7 @@ export default function Show({
             </header>
 
             {/* Barra superior encima del producto: Volver / Categoría / Nombre */}
-            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-2">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-2 space-y-2.5">
                 <nav className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
                     <button
                         type="button"
@@ -189,12 +249,29 @@ export default function Show({
                         {product.name}
                     </span>
                 </nav>
+
+                {flash?.success && (
+                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-between gap-2">
+                        <span>✓ {flash.success}</span>
+                        <Link
+                            href={route("cart.index")}
+                            className="text-emerald-900 underline font-extrabold whitespace-nowrap"
+                        >
+                            Ir al carrito →
+                        </Link>
+                    </div>
+                )}
+
+                {errors?.cart && (
+                    <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-2.5 rounded-2xl text-xs font-bold">
+                        {errors.cart}
+                    </div>
+                )}
             </div>
 
             {/* Contenedor Principal: Móvil/Tableta (apilado + barra inferior fija) / PC (2 columnas con panel sticky) */}
             <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-start">
-
                     {/* =========================================================
                         COLUMNA IZQUIERDA (7 cols): Galería, Resumen Móvil/Tablet y Detalles
                     ========================================================= */}
@@ -216,12 +293,17 @@ export default function Show({
                             {images.length > 1 && (
                                 <div className="flex items-center gap-3 mt-4 overflow-x-auto pb-1">
                                     {images.map((img) => {
-                                        const isSelected = selectedImage === img.image_url;
+                                        const isSelected =
+                                            selectedImage === img.image_url;
                                         return (
                                             <button
                                                 key={img.id}
                                                 type="button"
-                                                onClick={() => setSelectedImage(img.image_url)}
+                                                onClick={() =>
+                                                    setSelectedImage(
+                                                        img.image_url,
+                                                    )
+                                                }
                                                 className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 overflow-hidden flex-shrink-0 bg-slate-50 p-1 transition cursor-pointer ${
                                                     isSelected
                                                         ? "border-blue-600 ring-2 ring-blue-100"
@@ -246,7 +328,8 @@ export default function Show({
                                 <div className="space-y-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                                            {product.category?.name || "Hardware"}
+                                            {product.category?.name ||
+                                                "Hardware"}
                                         </span>
                                         {product.sku && (
                                             <span className="text-[11px] font-mono font-bold text-slate-400">
@@ -262,8 +345,16 @@ export default function Show({
                                 <button
                                     type="button"
                                     onClick={handleToggleFavorite}
-                                    title={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
-                                    aria-label={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
+                                    title={
+                                        isFavorite
+                                            ? "Quitar de favoritos"
+                                            : "Guardar en favoritos"
+                                    }
+                                    aria-label={
+                                        isFavorite
+                                            ? "Quitar de favoritos"
+                                            : "Guardar en favoritos"
+                                    }
                                     className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-200 flex-shrink-0 cursor-pointer active:scale-90 ${
                                         isFavorite
                                             ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-600/25"
@@ -272,7 +363,9 @@ export default function Show({
                                 >
                                     <svg
                                         className="w-5 h-5"
-                                        fill={isFavorite ? "currentColor" : "none"}
+                                        fill={
+                                            isFavorite ? "currentColor" : "none"
+                                        }
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
                                     >
@@ -313,8 +406,13 @@ export default function Show({
 
                             {addedQty > 0 && (
                                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center justify-between">
-                                    <span>✓ Agregaste {addedQty} {addedQty === 1 ? "unidad" : "unidades"} al carrito</span>
-                                    <span className="font-black">Total carrito: {currentCartCount}</span>
+                                    <span>✓ Agregado al carrito</span>
+                                    <Link
+                                        href={route("cart.index")}
+                                        className="font-black underline"
+                                    >
+                                        Ver carrito ({currentCartCount})
+                                    </Link>
                                 </div>
                             )}
                         </div>
@@ -326,7 +424,8 @@ export default function Show({
                                     Descripción y Especificaciones
                                 </h2>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                    Información técnica detallada del producto o servicio
+                                    Información técnica detallada del producto o
+                                    servicio
                                 </p>
                             </div>
 
@@ -341,27 +440,42 @@ export default function Show({
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
                                     <div className="bg-slate-50 rounded-2xl p-3.5 flex justify-between border border-slate-100">
-                                        <span className="text-slate-500 font-semibold">Categoría</span>
+                                        <span className="text-slate-500 font-semibold">
+                                            Categoría
+                                        </span>
                                         <span className="font-extrabold text-slate-900">
-                                            {product.category?.name || "General"}
+                                            {product.category?.name ||
+                                                "General"}
                                         </span>
                                     </div>
                                     <div className="bg-slate-50 rounded-2xl p-3.5 flex justify-between border border-slate-100">
-                                        <span className="text-slate-500 font-semibold">Código / SKU</span>
+                                        <span className="text-slate-500 font-semibold">
+                                            Código / SKU
+                                        </span>
                                         <span className="font-mono font-extrabold text-slate-900">
                                             {product.sku || "N/A"}
                                         </span>
                                     </div>
                                     <div className="bg-slate-50 rounded-2xl p-3.5 flex justify-between border border-slate-100">
-                                        <span className="text-slate-500 font-semibold">Condición</span>
+                                        <span className="text-slate-500 font-semibold">
+                                            Condición
+                                        </span>
                                         <span className="font-extrabold text-slate-900">
-                                            {product.is_new ? "Nuevo" : "Estándar"}
+                                            {product.is_new
+                                                ? "Nuevo"
+                                                : "Estándar"}
                                         </span>
                                     </div>
                                     <div className="bg-slate-50 rounded-2xl p-3.5 flex justify-between border border-slate-100">
-                                        <span className="text-slate-500 font-semibold">Disponibilidad</span>
-                                        <span className={`font-extrabold ${inStock ? "text-emerald-600" : "text-rose-600"}`}>
-                                            {inStock ? `${stock} unidades` : "Agotado"}
+                                        <span className="text-slate-500 font-semibold">
+                                            Disponibilidad
+                                        </span>
+                                        <span
+                                            className={`font-extrabold ${inStock ? "text-emerald-600" : "text-rose-600"}`}
+                                        >
+                                            {inStock
+                                                ? `${stock} unidades`
+                                                : "Agotado"}
                                         </span>
                                     </div>
                                 </div>
@@ -369,8 +483,18 @@ export default function Show({
 
                             <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-4 sm:p-5 flex items-start gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    <svg
+                                        className="w-5 h-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                        />
                                     </svg>
                                 </div>
                                 <div>
@@ -378,7 +502,9 @@ export default function Show({
                                         Respaldo y Soporte Técnico Siscomputec
                                     </h4>
                                     <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                                        Atención personalizada en Cancún, asesoría de compatibilidad e instalación profesional disponible.
+                                        Atención personalizada en Cancún,
+                                        asesoría de compatibilidad e instalación
+                                        profesional disponible.
                                     </p>
                                 </div>
                             </div>
@@ -394,7 +520,8 @@ export default function Show({
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                                            {product.category?.name || "Hardware"}
+                                            {product.category?.name ||
+                                                "Hardware"}
                                         </span>
                                         {product.sku && (
                                             <span className="text-[11px] font-mono font-bold text-slate-400">
@@ -410,8 +537,16 @@ export default function Show({
                                 <button
                                     type="button"
                                     onClick={handleToggleFavorite}
-                                    title={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
-                                    aria-label={isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"}
+                                    title={
+                                        isFavorite
+                                            ? "Quitar de favoritos"
+                                            : "Guardar en favoritos"
+                                    }
+                                    aria-label={
+                                        isFavorite
+                                            ? "Quitar de favoritos"
+                                            : "Guardar en favoritos"
+                                    }
                                     className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all duration-200 flex-shrink-0 cursor-pointer active:scale-90 ${
                                         isFavorite
                                             ? "bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-600/25"
@@ -420,7 +555,9 @@ export default function Show({
                                 >
                                     <svg
                                         className="w-5 h-5"
-                                        fill={isFavorite ? "currentColor" : "none"}
+                                        fill={
+                                            isFavorite ? "currentColor" : "none"
+                                        }
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
                                     >
@@ -437,7 +574,9 @@ export default function Show({
                             <div className="pt-2 border-t border-slate-100 flex items-end justify-between gap-3">
                                 <div>
                                     <span className="text-[11px] font-bold text-slate-400 uppercase block">
-                                        {quantity > 1 ? `Total (${quantity} uds.)` : "Precio de contado"}
+                                        {quantity > 1
+                                            ? `Total (${quantity} uds.)`
+                                            : "Precio de contado"}
                                     </span>
                                     <div className="flex items-baseline gap-2 mt-0.5">
                                         <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
@@ -500,31 +639,52 @@ export default function Show({
 
                             {addedQty > 0 && (
                                 <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-between">
-                                    <span>✓ Agregaste {addedQty} {addedQty === 1 ? "unidad" : "unidades"}</span>
-                                    <span className="font-black">En carrito: {currentCartCount}</span>
+                                    <span>✓ Agregado al carrito</span>
+                                    <Link
+                                        href={route("cart.index")}
+                                        className="font-black underline"
+                                    >
+                                        Ver carrito ({currentCartCount})
+                                    </Link>
                                 </div>
                             )}
 
                             <div className="space-y-2.5 pt-1">
                                 <button
                                     type="button"
-                                    disabled={!inStock}
+                                    disabled={!inStock || addingToCart}
                                     onClick={handleBuyNow}
                                     className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold py-3.5 px-5 rounded-2xl text-sm shadow-md shadow-blue-500/20 transition cursor-pointer disabled:cursor-not-allowed"
                                 >
-                                    {inStock ? `Comprar ahora · $${totalPrice.toFixed(2)}` : "Producto agotado"}
+                                    {inStock
+                                        ? `Comprar ahora · $${totalPrice.toFixed(2)}`
+                                        : "Producto agotado"}
                                 </button>
 
                                 <button
                                     type="button"
-                                    disabled={!inStock}
+                                    disabled={!inStock || addingToCart}
                                     onClick={handleAddToCart}
                                     className="w-full bg-blue-50 hover:bg-blue-100 disabled:bg-slate-100 text-blue-700 disabled:text-slate-400 font-extrabold py-3.5 px-5 rounded-2xl text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    <svg
+                                        className="w-5 h-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                                        />
                                     </svg>
-                                    <span>Agregar al carrito</span>
+                                    <span>
+                                        {addingToCart
+                                            ? "Agregando..."
+                                            : "Agregar al carrito"}
+                                    </span>
                                     {currentCartCount > 0 && (
                                         <span className="bg-blue-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full">
                                             {currentCartCount}
@@ -549,7 +709,6 @@ export default function Show({
                             </div>
                         </div>
                     </aside>
-
                 </div>
             </main>
 
@@ -589,10 +748,14 @@ export default function Show({
 
                         <div className="text-right leading-tight">
                             <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                                A pagar ({quantity} {quantity === 1 ? "ud." : "uds."})
+                                A pagar ({quantity}{" "}
+                                {quantity === 1 ? "ud." : "uds."})
                             </span>
                             <span className="text-base sm:text-lg font-black text-slate-900">
-                                ${totalPrice.toFixed(2)} <span className="text-[11px] font-bold text-slate-400">MXN</span>
+                                ${totalPrice.toFixed(2)}{" "}
+                                <span className="text-[11px] font-bold text-slate-400">
+                                    MXN
+                                </span>
                             </span>
                         </div>
                     </div>
@@ -600,7 +763,7 @@ export default function Show({
                     <div className="grid grid-cols-2 gap-2">
                         <button
                             type="button"
-                            disabled={!inStock}
+                            disabled={!inStock || addingToCart}
                             onClick={handleAddToCart}
                             className={`font-extrabold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed ${
                                 addedQty > 0
@@ -609,13 +772,17 @@ export default function Show({
                             }`}
                         >
                             <span>
-                                {addedQty > 0 ? `✓ En carrito (${currentCartCount})` : "Agregar al carrito"}
+                                {addingToCart
+                                    ? "Agregando..."
+                                    : addedQty > 0
+                                      ? `✓ En carrito (${currentCartCount})`
+                                      : "Agregar al carrito"}
                             </span>
                         </button>
 
                         <button
                             type="button"
-                            disabled={!inStock}
+                            disabled={!inStock || addingToCart}
                             onClick={handleBuyNow}
                             className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold py-2.5 px-3 rounded-xl text-xs shadow-md shadow-blue-500/20 transition cursor-pointer disabled:cursor-not-allowed"
                         >
@@ -624,6 +791,16 @@ export default function Show({
                     </div>
                 </div>
             </div>
+            <AddedToCartDrawer
+                open={cartDrawerOpen}
+                onClose={() => setCartDrawerOpen(false)}
+                product={product}
+                productImage={selectedImage}
+                cartItem={activeCartItem}
+                addedQuantity={addedQty || quantity}
+                cartCount={currentCartCount}
+                relatedProducts={relatedProducts}
+            />
         </div>
     );
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ProfileController;
@@ -9,6 +10,7 @@ use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 /*
@@ -16,19 +18,26 @@ use Inertia\Inertia;
 | Rutas Públicas (Tienda)
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', function () {
     $favoriteIds = [];
+    $cartCount = 0;
 
     if (Auth::check()) {
         /** @var \App\Models\User $user */
         $user = Auth::user();
         $favoriteIds = $user->favorites()->pluck('products.id')->toArray();
+
+        if (Schema::hasTable('cart_items') && method_exists($user, 'cart')) {
+            $cartCount = (int) ($user->cart?->items()->sum('quantity') ?? 0);
+        }
     }
 
     return Inertia::render('Welcome', [
         'products' => Product::with(['category', 'images'])->where('is_active', true)->latest()->get(),
         'categories' => Category::all(),
         'favoriteIds' => $favoriteIds,
+        'cartCount' => $cartCount,
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
     ]);
@@ -38,15 +47,40 @@ Route::get('/products/{product}', function (Product $product) {
     $product->load(['category', 'images']);
 
     $isFavorite = false;
+    $favoritesCount = 0;
+    $cartCount = 0;
+    $cartItem = null;
+
     if (Auth::check()) {
         /** @var \App\Models\User $user */
         $user = Auth::user();
         $isFavorite = $user->favorites()->where('product_id', $product->id)->exists();
+        $favoritesCount = $user->favorites()->count();
+
+        if (Schema::hasTable('cart_items') && method_exists($user, 'cart')) {
+            $cart = $user->cart;
+            $cartCount = (int) ($cart?->items()->sum('quantity') ?? 0);
+            if ($cart) {
+                $cartItem = $cart->items()->where('product_id', $product->id)->first();
+            }
+        }
     }
+
+    $relatedProducts = Product::with(['category', 'images'])
+        ->where('is_active', true)
+        ->where('id', '!=', $product->id)
+        ->orderByRaw('category_id = ? DESC', [$product->category_id])
+        ->latest()
+        ->take(4)
+        ->get();
 
     return Inertia::render('Products/Show', [
         'product' => $product,
+        'relatedProducts' => $relatedProducts,
         'isFavorite' => $isFavorite,
+        'favoritesCount' => $favoritesCount,
+        'cartCount' => $cartCount,
+        'cartItem' => $cartItem,
         'auth' => [
             'user' => Auth::user(),
         ],
@@ -55,7 +89,7 @@ Route::get('/products/{product}', function (Product $product) {
 
 /*
 |--------------------------------------------------------------------------
-| Rutas Autenticadas (Clientes y Perfil)
+| Rutas Autenticadas (Clientes, Perfil, Favoritos y Carrito)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
@@ -74,6 +108,12 @@ Route::middleware('auth')->group(function () {
 
     // Favoritos / Me Gustas
     Route::post('/favoritos/{product}/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
+
+    // Carrito de Compras (solo usuarios logueados)
+    Route::get('/carrito', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/carrito/{product}', [CartController::class, 'store'])->name('cart.store');
+    Route::patch('/carrito/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
+    Route::delete('/carrito/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 });
 
 /*

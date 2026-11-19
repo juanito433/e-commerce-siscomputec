@@ -9,9 +9,6 @@ use Inertia\Inertia;
 
 class CustomerController extends Controller
 {
-    /**
-     * Muestra el panel del cliente (Perfil, Órdenes/Compras y Me Gustas/Guardados).
-     */
     public function index()
     {
         /** @var \App\Models\User $user */
@@ -30,18 +27,26 @@ class CustomerController extends Controller
                 ->get();
         }
 
+        $cartItems = [];
+        if (Schema::hasTable('carts') && Schema::hasTable('cart_items') && method_exists($user, 'cart')) {
+            $cart = $user->cart()->with(['items.product.category', 'items.product.images'])->first();
+            if ($cart) {
+                $cartItems = $cart->items->filter(function ($item) {
+                    return $item->product && $item->product->is_active;
+                })->values();
+            }
+        }
+
         return Inertia::render('Profile/CustomerDashboard', [
             'auth' => [
                 'user' => $user,
             ],
             'orders' => $orders,
             'favorites' => $favorites,
+            'cartItems' => $cartItems,
         ]);
     }
 
-    /**
-     * Actualiza los datos básicos del perfil del cliente.
-     */
     public function updateProfile(Request $request)
     {
         /** @var \App\Models\User $user */
