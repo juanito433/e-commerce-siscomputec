@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -52,4 +53,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 });
 
+/* Usuarios/Clientes */
+
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/mi-cuenta', [CustomerController::class, 'index'])->name('customer.dashboard');
+    Route::patch('/mi-cuenta/perfil', [CustomerController::class, 'updateProfile'])->name('customer.profile.update');
+});
 require __DIR__ . '/auth.php';
