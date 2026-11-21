@@ -3,6 +3,8 @@ import { Head, Link, router } from "@inertiajs/react";
 import ProductCard from "../Components/ProductCard";
 import CatalogNavbar from "../Components/CatalogNavbar";
 import { useUserLocation } from "../Hooks/useUserLocation";
+import StoreFooter from "../Components/StoreFooter";
+
 export default function Welcome({
     auth,
     products = [],
@@ -318,6 +320,7 @@ export default function Welcome({
                     )}
                 </div>
             </main>
+            <StoreFooter />
         </div>
     );
 }

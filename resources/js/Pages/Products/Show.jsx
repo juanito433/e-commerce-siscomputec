@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import AddedToCartDrawer from "../../Components/Customer/AddedToCartDrawer";
+import StoreFooter from "../../Components/StoreFooter";
 
 export default function Show({
     auth,
@@ -131,9 +132,8 @@ export default function Show({
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-600 selection:text-white pb-32 lg:pb-16">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-600 selection:text-white  ">
             <Head title={`${product.name} - Siscomputec`} />
-
             {/* Navbar Superior */}
             <header className="bg-white/95 backdrop-blur-md shadow-xs sticky top-0 z-40 border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
@@ -225,7 +225,6 @@ export default function Show({
                     </div>
                 </div>
             </header>
-
             {/* Barra superior encima del producto: Volver / Categoría / Nombre */}
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-2 space-y-2.5">
                 <nav className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
@@ -268,7 +267,6 @@ export default function Show({
                     </div>
                 )}
             </div>
-
             {/* Contenedor Principal: Móvil/Tableta (apilado + barra inferior fija) / PC (2 columnas con panel sticky) */}
             <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-start">
@@ -715,7 +713,6 @@ export default function Show({
                     </aside>
                 </div>
             </main>
-
             {/* =========================================================
                 BARRA INFERIOR FIJA EN TELÉFONO Y TABLETA (< lg)
             ========================================================= */}
@@ -808,6 +805,7 @@ export default function Show({
                 cartCount={currentCartCount}
                 relatedProducts={relatedProducts}
             />
+            <StoreFooter />;
         </div>
     );
 }

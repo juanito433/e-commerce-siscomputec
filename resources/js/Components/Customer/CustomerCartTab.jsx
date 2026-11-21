@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
+import LegalModal from "../LegalModal";
 
 const TAX_RATE = 0.16;
 const TAX_DIVISOR = 1.16;
@@ -32,7 +33,9 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
         cfdi_use: "G03",
         invoice_email: userEmail,
     });
-    const [billingError, setBillingError] = useState("");
+    const [acceptedPolicies, setAcceptedPolicies] = useState(false);
+    const [formError, setFormError] = useState("");
+    const [legalDoc, setLegalDoc] = useState(null);
 
     const totalItems = items.reduce(
         (acc, item) => acc + Number(item.quantity || 0),
@@ -64,34 +67,47 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
     };
 
     const handleBillingChange = (field, value) => {
-        setBillingError("");
+        setFormError("");
         setBilling((prev) => ({
             ...prev,
             [field]: field === "rfc" ? value.toUpperCase() : value,
         }));
     };
 
-    const validateBilling = () => {
-        if (!requiresInvoice) return true;
+    const validateBeforeContinue = () => {
+        if (requiresInvoice) {
+            const cleanRfc = billing.rfc.trim().toUpperCase();
+            const rfcRegex = /^([A-ZÑ&]{3,4})\d{6}([A-Z\d]{3})$/;
+            const cpRegex = /^\d{5}$/;
 
-        const cleanRfc = billing.rfc.trim().toUpperCase();
-        const rfcRegex = /^([A-ZÑ&]{3,4})\d{6}([A-Z\d]{3})$/;
-        const cpRegex = /^\d{5}$/;
+            if (!rfcRegex.test(cleanRfc)) {
+                setFormError(
+                    "Ingresa un RFC válido de 12 (moral) o 13 (física) caracteres."
+                );
+                return false;
+            }
+            if (!billing.business_name.trim()) {
+                setFormError(
+                    "Ingresa el nombre o razón social tal como aparece en tu constancia."
+                );
+                return false;
+            }
+            if (!cpRegex.test(billing.postal_code.trim())) {
+                setFormError("El código postal fiscal debe tener 5 dígitos.");
+                return false;
+            }
+            if (!billing.invoice_email.trim() || !billing.invoice_email.includes("@")) {
+                setFormError(
+                    "Ingresa un correo válido para recibir tu factura XML y PDF."
+                );
+                return false;
+            }
+        }
 
-        if (!rfcRegex.test(cleanRfc)) {
-            setBillingError("Ingresa un RFC válido de 12 (moral) o 13 (física) caracteres.");
-            return false;
-        }
-        if (!billing.business_name.trim()) {
-            setBillingError("Ingresa el nombre o razón social tal como aparece en tu constancia.");
-            return false;
-        }
-        if (!cpRegex.test(billing.postal_code.trim())) {
-            setBillingError("El código postal fiscal debe tener 5 dígitos.");
-            return false;
-        }
-        if (!billing.invoice_email.trim() || !billing.invoice_email.includes("@")) {
-            setBillingError("Ingresa un correo válido para recibir tu factura XML y PDF.");
+        if (!acceptedPolicies) {
+            setFormError(
+                "Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar."
+            );
             return false;
         }
 
@@ -99,10 +115,11 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
     };
 
     const handleContinuePurchase = () => {
-        if (!validateBilling()) return;
+        if (!validateBeforeContinue()) return;
 
         const payload = {
             requires_invoice: requiresInvoice,
+            accepted_policies: true,
             billing: requiresInvoice
                 ? {
                       ...billing,
@@ -135,7 +152,7 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
         <>
             <div
                 className={`bg-white rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-xs space-y-6 ${
-                    items.length > 0 ? "pb-44 xl:pb-8" : ""
+                    items.length > 0 ? "pb-48 xl:pb-8" : ""
                 }`}
             >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
@@ -144,7 +161,7 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                             Mi Carrito ({totalItems})
                         </h2>
                         <p className="text-xs text-slate-500 mt-0.5">
-                            Precios con IVA (16%) incluido · Facturación disponible en Siscomputec.
+                            Precios con IVA (16%) incluido · Recolección en sucursal en Cancún y facturación CFDI 4.0.
                         </p>
                     </div>
                     <button
@@ -164,7 +181,7 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
                 {items.length > 0 ? (
                     <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                        {/* Lista de productos + Opción de Facturación */}
+                        {/* Columna izquierda: Productos + Facturación + Aceptación Legal */}
                         <div className="xl:col-span-8 space-y-4">
                             <div className="space-y-3.5">
                                 {items.map((item) => {
@@ -273,7 +290,7 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                         type="checkbox"
                                         checked={requiresInvoice}
                                         onChange={(e) => {
-                                            setBillingError("");
+                                            setFormError("");
                                             setRequiresInvoice(e.target.checked);
                                         }}
                                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-1 sm:mt-0 cursor-pointer"
@@ -282,12 +299,6 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
                                 {requiresInvoice && (
                                     <div className="pt-4 border-t border-slate-200 space-y-3.5">
-                                        {billingError && (
-                                            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2.5 rounded-xl text-xs font-bold">
-                                                {billingError}
-                                            </div>
-                                        )}
-
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-[11px] font-bold text-slate-600 mb-1">
@@ -395,6 +406,54 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Aceptación de Avisos Legales y Privacidad */}
+                            <div className="border border-slate-200 rounded-2xl p-4 sm:p-5 bg-white space-y-2.5">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={acceptedPolicies}
+                                        onChange={(e) => {
+                                            setFormError("");
+                                            setAcceptedPolicies(e.target.checked);
+                                        }}
+                                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5 cursor-pointer"
+                                    />
+                                    <span className="text-xs text-slate-600 leading-relaxed">
+                                        Acepto los{" "}
+                                        <button
+                                            type="button"
+                                            onClick={() => setLegalDoc("terms")}
+                                            className="font-bold text-blue-600 hover:underline cursor-pointer"
+                                        >
+                                            Términos y Condiciones
+                                        </button>
+                                        , la{" "}
+                                        <button
+                                            type="button"
+                                            onClick={() => setLegalDoc("warranty")}
+                                            className="font-bold text-blue-600 hover:underline cursor-pointer"
+                                        >
+                                            Política de Garantías
+                                        </button>{" "}
+                                        y el{" "}
+                                        <button
+                                            type="button"
+                                            onClick={() => setLegalDoc("privacy")}
+                                            className="font-bold text-blue-600 hover:underline cursor-pointer"
+                                        >
+                                            Aviso de Privacidad
+                                        </button>{" "}
+                                        de Siscomputec (recolección en sucursal en Cancún).
+                                    </span>
+                                </label>
+
+                                {formError && (
+                                    <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2.5 rounded-xl text-xs font-bold">
+                                        {formError}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Resumen lateral fijo en pantallas grandes (xl+) */}
@@ -405,7 +464,9 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
                             <div className="space-y-2 text-xs text-slate-600">
                                 <div className="flex items-center justify-between">
-                                    <span>Subtotal ({totalItems} {totalItems === 1 ? "ud." : "uds."})</span>
+                                    <span>
+                                        Subtotal ({totalItems} {totalItems === 1 ? "ud." : "uds."})
+                                    </span>
                                     <span className="font-semibold text-slate-800">
                                         ${subtotalWithoutTax.toFixed(2)} MXN
                                     </span>
@@ -431,10 +492,15 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                 </span>
                             </div>
 
-                            <div className="text-[11px] text-slate-500 bg-white rounded-xl p-2.5 border border-slate-200/70">
-                                {requiresInvoice
-                                    ? `Factura activada: ${billing.rfc || "RFC pendiente"}`
-                                    : "Precios con IVA incluido · Factura opcional"}
+                            <div className="text-[11px] text-slate-500 bg-white rounded-xl p-2.5 border border-slate-200/70 space-y-1">
+                                <p>
+                                    {requiresInvoice
+                                        ? `Factura activada: ${billing.rfc || "RFC pendiente"}`
+                                        : "Precios con IVA incluido · Factura opcional"}
+                                </p>
+                                <p className="text-[10px] text-slate-400">
+                                    Recolección en local · Cancún, Q. Roo
+                                </p>
                             </div>
 
                             <button
@@ -480,6 +546,12 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
             {items.length > 0 && (
                 <div className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-2xl px-4 sm:px-6 py-3">
                     <div className="max-w-4xl mx-auto space-y-2.5">
+                        {formError && (
+                            <p className="text-[11px] font-bold text-rose-600 truncate">
+                                {formError}
+                            </p>
+                        )}
+
                         <div className="flex items-baseline justify-between gap-2">
                             <div>
                                 <span className="text-[11px] font-bold text-slate-700 block leading-none">
@@ -522,6 +594,8 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                     </div>
                 </div>
             )}
+
+            <LegalModal docKey={legalDoc} onClose={() => setLegalDoc(null)} />
         </>
     );
 }
