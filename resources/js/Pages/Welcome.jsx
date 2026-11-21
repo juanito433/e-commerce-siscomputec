@@ -1,8 +1,15 @@
 import { useState, useMemo } from "react";
 import { Head, Link, router } from "@inertiajs/react";
 import ProductCard from "../Components/ProductCard";
-
-export default function Welcome({ auth, products = [], categories = [],favoriteIds = [] }) {
+import CatalogNavbar from "../Components/CatalogNavbar";
+import { useUserLocation } from "../Hooks/useUserLocation";
+export default function Welcome({
+    auth,
+    products = [],
+    categories = [],
+    favoriteIds = [],
+    cartCount = 0,
+}) {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [minPrice, setMinPrice] = useState("");
@@ -10,7 +17,7 @@ export default function Welcome({ auth, products = [], categories = [],favoriteI
     const [sortOrder, setSortOrder] = useState("relevancia");
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-
+    const userLocation = useUserLocation();
     const toggleCategory = (catName) => {
         setSelectedCategories((prev) =>
             prev.includes(catName)
@@ -76,275 +83,20 @@ export default function Welcome({ auth, products = [], categories = [],favoriteI
             <Head title="Catálogo de Hardware - Siscomputec" />
 
             {/* Navbar */}
-            <header className="bg-white/95 backdrop-blur-md shadow-xs sticky top-0 z-50 border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-0 sm:h-20 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="w-full sm:w-auto flex items-center justify-between gap-2">
-                        <Link
-                            href="/"
-                            className="text-lg sm:text-2xl font-black text-blue-700 tracking-tight flex items-center gap-2"
-                        >
-                            <img
-                                src="/images/logo.svg"
-                                alt="Logo de la empresa"
-                                className="h-8 sm:h-10 w-auto mx-auto object-contain"
-                            />{" "}
-                            <span className="tracking-tighter">
-                                SISCOMPUTEC
-                            </span>
-                        </Link>
-
-                        {/* Botones de Auth Móvil */}
-                        <div className="flex items-center gap-2 sm:hidden relative">
-                            {auth?.user ? (
-                                <div className="relative">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setUserMenuOpen((prev) => !prev)
-                                        }
-                                        className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-full border border-slate-200 flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                        <span>{auth.user.name}</span>
-                                        <svg
-                                            className="w-3.5 h-3.5 text-slate-500"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth="2.5"
-                                                d="M19 9l-7 7-7-7"
-                                            />
-                                        </svg>
-                                    </button>
-
-                                    {userMenuOpen && (
-                                        <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-xs">
-                                            <div className="px-4 py-2 border-b border-slate-100">
-                                                <p className="font-black text-slate-900 truncate">
-                                                    {auth.user.name}{" "}
-                                                    {auth.user.last_name || ""}
-                                                </p>
-                                                <p className="text-[11px] text-slate-400 truncate">
-                                                    {auth.user.email}
-                                                </p>
-                                            </div>
-                                            <Link
-                                                href="/mi-cuenta?tab=profile"
-                                                onClick={() =>
-                                                    setUserMenuOpen(false)
-                                                }
-                                                className="block px-4 py-2 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700"
-                                            >
-                                                Mi Perfil
-                                            </Link>
-                                            <Link
-                                                href="/mi-cuenta?tab=orders"
-                                                onClick={() =>
-                                                    setUserMenuOpen(false)
-                                                }
-                                                className="block px-4 py-2 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700"
-                                            >
-                                                Órdenes y Compras
-                                            </Link>
-                                            <Link
-                                                href="/mi-cuenta?tab=favorites"
-                                                onClick={() =>
-                                                    setUserMenuOpen(false)
-                                                }
-                                                className="block px-4 py-2 font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700"
-                                            >
-                                                Me Gustas / Guardados
-                                            </Link>
-                                            {auth.user.role === "admin" && (
-                                                <Link
-                                                    href={route(
-                                                        "admin.dashboard",
-                                                    )}
-                                                    onClick={() =>
-                                                        setUserMenuOpen(false)
-                                                    }
-                                                    className="block px-4 py-2 font-extrabold text-blue-700 bg-blue-50/60 hover:bg-blue-100 mt-1"
-                                                >
-                                                    Panel Admin
-                                                </Link>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={handleLogout}
-                                                className="w-full text-left px-4 py-2 font-bold text-rose-600 hover:bg-rose-50 border-t border-slate-100 mt-1 cursor-pointer"
-                                            >
-                                                Cerrar Sesión
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <>
-                                    <Link
-                                        href={route("login")}
-                                        className="font-bold text-xs text-slate-700 hover:text-blue-600 px-1 py-1"
-                                    >
-                                        Ingresar
-                                    </Link>
-                                    <Link
-                                        href={route("register")}
-                                        className="bg-blue-600 text-white font-bold px-3 py-1.5 rounded-full text-xs hover:bg-blue-700 shadow-xs whitespace-nowrap"
-                                    >
-                                        Crear Cuenta
-                                    </Link>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Buscador Dinámico */}
-                    <div className="w-full sm:flex-1 sm:max-w-md sm:mx-4">
-                        <div className="relative w-full">
-                            <input
-                                type="text"
-                                placeholder="Buscar por nombre, descripción o SKU..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-full py-2 pl-4 pr-10 text-xs sm:text-sm transition-all shadow-inner"
-                            />
-                            <svg
-                                className="w-4 h-4 absolute right-3.5 top-2.5 text-slate-400 pointer-events-none"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                ></path>
-                            </svg>
-                        </div>
-                    </div>
-
-                    {/* Botones de Auth Escritorio */}
-                    <div className="hidden sm:flex items-center gap-3 flex-shrink-0 relative">
-                        {auth?.user ? (
-                            <div className="relative">
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setUserMenuOpen((prev) => !prev)
-                                    }
-                                    className="bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm px-4 py-2 rounded-full border border-slate-200 shadow-2xs flex items-center gap-2 transition cursor-pointer"
-                                >
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    <span>{auth.user.name}</span>
-                                    <svg
-                                        className="w-4 h-4 text-slate-500"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2.5"
-                                            d="M19 9l-7 7-7-7"
-                                        />
-                                    </svg>
-                                </button>
-
-                                {userMenuOpen && (
-                                    <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-sm">
-                                        <div className="px-4 py-2.5 border-b border-slate-100">
-                                            <p className="font-black text-slate-900 truncate">
-                                                {auth.user.name}{" "}
-                                                {auth.user.last_name || ""}
-                                            </p>
-                                            <p className="text-xs text-slate-400 truncate">
-                                                {auth.user.email}
-                                            </p>
-                                        </div>
-
-                                        <Link
-                                            href="/mi-cuenta?tab=profile"
-                                            onClick={() =>
-                                                setUserMenuOpen(false)
-                                            }
-                                            className="flex items-center justify-between px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
-                                        >
-                                            <span>Mi Perfil</span>
-                                            <span className="text-slate-400">
-                                                →
-                                            </span>
-                                        </Link>
-                                        <Link
-                                            href="/mi-cuenta?tab=orders"
-                                            onClick={() =>
-                                                setUserMenuOpen(false)
-                                            }
-                                            className="flex items-center justify-between px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
-                                        >
-                                            <span>Mis Órdenes y Compras</span>
-                                            <span className="text-slate-400">
-                                                →
-                                            </span>
-                                        </Link>
-                                        <Link
-                                            href="/mi-cuenta?tab=favorites"
-                                            onClick={() =>
-                                                setUserMenuOpen(false)
-                                            }
-                                            className="flex items-center justify-between px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition"
-                                        >
-                                            <span>Me Gustas / Guardados</span>
-                                            <span className="text-slate-400">
-                                                →
-                                            </span>
-                                        </Link>
-
-                                        {auth.user.role === "admin" && (
-                                            <Link
-                                                href={route("admin.dashboard")}
-                                                onClick={() =>
-                                                    setUserMenuOpen(false)
-                                                }
-                                                className="flex items-center justify-between px-4 py-2.5 text-xs font-extrabold text-blue-700 bg-blue-50/70 hover:bg-blue-100 border-t border-slate-100 mt-1 transition"
-                                            >
-                                                <span>Panel Admin</span>
-                                                <span>⚙</span>
-                                            </Link>
-                                        )}
-
-                                        <button
-                                            type="button"
-                                            onClick={handleLogout}
-                                            className="w-full text-left px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 border-t border-slate-100 mt-1 transition cursor-pointer"
-                                        >
-                                            Cerrar Sesión
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <>
-                                <Link
-                                    href={route("login")}
-                                    className="font-bold text-sm text-slate-700 hover:text-blue-600 px-2 py-1 transition"
-                                >
-                                    Ingresar
-                                </Link>
-                                <Link
-                                    href={route("register")}
-                                    className="bg-blue-600 text-white font-bold px-5 py-2.5 rounded-full text-sm hover:bg-blue-700 transition shadow-md shadow-blue-500/20 whitespace-nowrap"
-                                >
-                                    Crear Cuenta
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </header>
+            <CatalogNavbar
+                user={auth?.user}
+                searchQuery={searchTerm} // <-- usa el nombre de tu estado de búsqueda
+                onSearchChange={setSearchTerm}
+                favoritesCount={favoriteIds?.length ?? 0}
+                cartCount={cartCount ?? 0}
+                location={userLocation}
+                onRefreshLocation={userLocation.requestLocation}
+                onOpenNotificationsPreview={() =>
+                    alert(
+                        "Notificaciones (vista previa): Aquí aparecerán avisos de pedidos listos para recoger.",
+                    )
+                }
+            />
 
             {/* Banner Hero */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">

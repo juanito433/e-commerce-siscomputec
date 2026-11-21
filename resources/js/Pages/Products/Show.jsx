@@ -277,11 +277,11 @@ export default function Show({
                     ========================================================= */}
                     <div className="lg:col-span-7 space-y-5 sm:space-y-6">
                         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-xs">
-                            <div className="relative w-full h-64 sm:h-80 md:h-96 bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-100">
+                            <div className="relative w-full h-72 sm:h-96 md:h-[430px] bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-100 p-6 sm:p-10">
                                 <img
                                     src={selectedImage}
                                     alt={product.name}
-                                    className="max-h-full max-w-full object-contain p-3 sm:p-4 transition-all duration-300"
+                                    className="w-full h-full object-contain transition-all duration-300"
                                 />
                                 {product.is_new && (
                                     <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-black px-3 py-1 rounded-full shadow-xs">
@@ -586,6 +586,10 @@ export default function Show({
                                             MXN
                                         </span>
                                     </div>
+                                    <p className="text-[11px] text-slate-400 mt-1">
+                                        IVA 16% incluido · Facturación
+                                        disponible
+                                    </p>
                                 </div>
                                 {quantity > 1 && (
                                     <span className="text-xs font-semibold text-slate-400">
@@ -757,6 +761,9 @@ export default function Show({
                                     MXN
                                 </span>
                             </span>
+                            <p className="text-[11px] text-slate-400 mt-1">
+                                IVA 16% incluido · Facturación disponible
+                            </p>
                         </div>
                     </div>
 
