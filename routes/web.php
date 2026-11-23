@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Models\Category;
 use App\Models\Product;
@@ -114,6 +115,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/carrito/{product}', [CartController::class, 'store'])->name('cart.store');
     Route::patch('/carrito/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
     Route::delete('/carrito/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
+
+    // Checkout y creación de orden
+    Route::post('/ordenes', [OrderController::class, 'store'])->name('orders.store');
 });
 
 /*

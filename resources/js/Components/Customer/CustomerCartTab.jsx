@@ -7,9 +7,15 @@ const TAX_DIVISOR = 1.16;
 
 const REGIMENES_FISCALES = [
     { code: "601", label: "601 - General de Ley Personas Morales" },
-    { code: "612", label: "612 - Personas Físicas con Actividades Empresariales y Profesionales" },
+    {
+        code: "612",
+        label: "612 - Personas Físicas con Actividades Empresariales y Profesionales",
+    },
     { code: "626", label: "626 - Régimen Simplificado de Confianza (RESICO)" },
-    { code: "605", label: "605 - Sueldos y Salarios e Ingresos Asimilados a Salarios" },
+    {
+        code: "605",
+        label: "605 - Sueldos y Salarios e Ingresos Asimilados a Salarios",
+    },
     { code: "616", label: "616 - Sin obligaciones fiscales" },
 ];
 
@@ -21,6 +27,7 @@ const USOS_CFDI = [
 ];
 
 export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
+    const [submitting, setSubmitting] = useState(false);
     const { errors, auth } = usePage().props;
     const userEmail = auth?.user?.email || "";
 
@@ -39,13 +46,13 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
     const totalItems = items.reduce(
         (acc, item) => acc + Number(item.quantity || 0),
-        0
+        0,
     );
 
     const totalWithTax = items.reduce(
         (acc, item) =>
             acc + Number(item.product?.price || 0) * Number(item.quantity || 0),
-        0
+        0,
     );
 
     const subtotalWithoutTax = totalWithTax / TAX_DIVISOR;
@@ -56,7 +63,7 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
         router.patch(
             route("cart.items.update", itemId),
             { quantity: nextQty },
-            { preserveScroll: true }
+            { preserveScroll: true },
         );
     };
 
@@ -82,13 +89,13 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
             if (!rfcRegex.test(cleanRfc)) {
                 setFormError(
-                    "Ingresa un RFC válido de 12 (moral) o 13 (física) caracteres."
+                    "Ingresa un RFC válido de 12 (moral) o 13 (física) caracteres.",
                 );
                 return false;
             }
             if (!billing.business_name.trim()) {
                 setFormError(
-                    "Ingresa el nombre o razón social tal como aparece en tu constancia."
+                    "Ingresa el nombre o razón social tal como aparece en tu constancia.",
                 );
                 return false;
             }
@@ -96,9 +103,12 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                 setFormError("El código postal fiscal debe tener 5 dígitos.");
                 return false;
             }
-            if (!billing.invoice_email.trim() || !billing.invoice_email.includes("@")) {
+            if (
+                !billing.invoice_email.trim() ||
+                !billing.invoice_email.includes("@")
+            ) {
                 setFormError(
-                    "Ingresa un correo válido para recibir tu factura XML y PDF."
+                    "Ingresa un correo válido para recibir tu factura XML y PDF.",
                 );
                 return false;
             }
@@ -106,7 +116,7 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
         if (!acceptedPolicies) {
             setFormError(
-                "Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar."
+                "Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar.",
             );
             return false;
         }
@@ -115,36 +125,34 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
     };
 
     const handleContinuePurchase = () => {
-        if (!validateBeforeContinue()) return;
+        if (!validateBeforeContinue() || submitting) return;
 
-        const payload = {
-            requires_invoice: requiresInvoice,
-            accepted_policies: true,
-            billing: requiresInvoice
-                ? {
-                      ...billing,
-                      rfc: billing.rfc.trim().toUpperCase(),
-                      business_name: billing.business_name.trim(),
-                      postal_code: billing.postal_code.trim(),
-                      invoice_email: billing.invoice_email.trim(),
-                  }
-                : null,
-            totals: {
-                subtotal: Number(subtotalWithoutTax.toFixed(2)),
-                iva: Number(taxAmount.toFixed(2)),
-                total: Number(totalWithTax.toFixed(2)),
+        router.post(
+            route("orders.store"),
+            {
+                accepted_policies: true,
+                requires_invoice: requiresInvoice,
+                delivery_method: "pickup",
+                payment_provider: "pay_on_pickup",
+                billing: requiresInvoice
+                    ? {
+                          ...billing,
+                          rfc: billing.rfc.trim().toUpperCase(),
+                          business_name: billing.business_name.trim(),
+                          postal_code: billing.postal_code.trim(),
+                          invoice_email: billing.invoice_email.trim(),
+                      }
+                    : null,
             },
-        };
-
-        if (typeof onCheckout === "function") {
-            onCheckout(payload);
-            return;
-        }
-
-        alert(
-            requiresInvoice
-                ? `Factura CFDI 4.0 activada para RFC ${payload.billing.rfc}. Total: $${totalWithTax.toFixed(2)} MXN`
-                : `Pedido listo sin factura individual (público en general). Total: $${totalWithTax.toFixed(2)} MXN`
+            {
+                preserveScroll: true,
+                onStart: () => setSubmitting(true),
+                onFinish: () => setSubmitting(false),
+                onError: (serverErrors) => {
+                    const firstMsg = Object.values(serverErrors)[0];
+                    if (firstMsg) setFormError(firstMsg);
+                },
+            },
         );
     };
 
@@ -161,7 +169,8 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                             Mi Carrito ({totalItems})
                         </h2>
                         <p className="text-xs text-slate-500 mt-0.5">
-                            Precios con IVA (16%) incluido · Recolección en sucursal en Cancún y facturación CFDI 4.0.
+                            Precios con IVA (16%) incluido · Recolección en
+                            sucursal en Cancún y facturación CFDI 4.0.
                         </p>
                     </div>
                     <button
@@ -187,13 +196,20 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                 {items.map((item) => {
                                     const product = item.product || {};
                                     const img =
-                                        product.images?.find((i) => i.is_primary)?.image_url ||
+                                        product.images?.find(
+                                            (i) => i.is_primary,
+                                        )?.image_url ||
                                         product.images?.[0]?.image_url ||
                                         "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=400&q=80";
-                                    const unitPrice = Number(product.price || 0);
+                                    const unitPrice = Number(
+                                        product.price || 0,
+                                    );
                                     const qty = Number(item.quantity || 1);
                                     const lineTotal = unitPrice * qty;
-                                    const maxStock = Math.max(1, Number(product.stock || 1));
+                                    const maxStock = Math.max(
+                                        1,
+                                        Number(product.stock || 1),
+                                    );
 
                                     return (
                                         <div
@@ -202,7 +218,10 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                         >
                                             <div className="flex gap-3.5 min-w-0">
                                                 <Link
-                                                    href={route("products.show", product.id)}
+                                                    href={route(
+                                                        "products.show",
+                                                        product.id,
+                                                    )}
                                                     className="w-20 h-20 rounded-xl bg-white border border-slate-200 overflow-hidden flex-shrink-0 flex items-center justify-center p-1"
                                                 >
                                                     <img
@@ -214,16 +233,22 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
                                                 <div className="min-w-0 space-y-1">
                                                     <span className="text-[10px] font-extrabold uppercase text-blue-600">
-                                                        {product.category?.name || "Hardware"}
+                                                        {product.category
+                                                            ?.name ||
+                                                            "Hardware"}
                                                     </span>
                                                     <Link
-                                                        href={route("products.show", product.id)}
+                                                        href={route(
+                                                            "products.show",
+                                                            product.id,
+                                                        )}
                                                         className="block text-sm font-extrabold text-slate-900 hover:text-blue-600 line-clamp-2"
                                                     >
                                                         {product.name}
                                                     </Link>
                                                     <p className="text-xs text-slate-500">
-                                                        ${unitPrice.toFixed(2)} MXN c/u{" "}
+                                                        ${unitPrice.toFixed(2)}{" "}
+                                                        MXN c/u{" "}
                                                         <span className="text-[11px] text-slate-400">
                                                             (IVA incl.)
                                                         </span>
@@ -240,7 +265,12 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                                     <div className="flex items-center border border-slate-200 rounded-xl bg-white overflow-hidden">
                                                         <button
                                                             type="button"
-                                                            onClick={() => updateQuantity(item.id, qty - 1)}
+                                                            onClick={() =>
+                                                                updateQuantity(
+                                                                    item.id,
+                                                                    qty - 1,
+                                                                )
+                                                            }
                                                             disabled={qty <= 1}
                                                             aria-label="Disminuir cantidad"
                                                             className="px-2.5 py-1 text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
@@ -252,8 +282,15 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                                         </span>
                                                         <button
                                                             type="button"
-                                                            onClick={() => updateQuantity(item.id, qty + 1)}
-                                                            disabled={qty >= maxStock}
+                                                            onClick={() =>
+                                                                updateQuantity(
+                                                                    item.id,
+                                                                    qty + 1,
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                qty >= maxStock
+                                                            }
                                                             aria-label="Aumentar cantidad"
                                                             className="px-2.5 py-1 text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40 cursor-pointer"
                                                         >
@@ -263,7 +300,9 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeItem(item.id)}
+                                                        onClick={() =>
+                                                            removeItem(item.id)
+                                                        }
                                                         className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl transition cursor-pointer"
                                                     >
                                                         Quitar
@@ -283,7 +322,8 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                             Requiero factura (CFDI 4.0)
                                         </span>
                                         <span className="text-xs text-slate-500 block">
-                                            Si no la marcas, se emitirá bajo venta a público en general.
+                                            Si no la marcas, se emitirá bajo
+                                            venta a público en general.
                                         </span>
                                     </div>
                                     <input
@@ -291,7 +331,9 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                         checked={requiresInvoice}
                                         onChange={(e) => {
                                             setFormError("");
-                                            setRequiresInvoice(e.target.checked);
+                                            setRequiresInvoice(
+                                                e.target.checked,
+                                            );
                                         }}
                                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-1 sm:mt-0 cursor-pointer"
                                     />
@@ -309,7 +351,12 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                                     maxLength={13}
                                                     placeholder="XAXX010101000"
                                                     value={billing.rfc}
-                                                    onChange={(e) => handleBillingChange("rfc", e.target.value)}
+                                                    onChange={(e) =>
+                                                        handleBillingChange(
+                                                            "rfc",
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     className="w-full rounded-xl border-slate-200 bg-white text-xs font-mono uppercase focus:border-blue-500 focus:ring-blue-500"
                                                 />
                                             </div>
@@ -326,7 +373,10 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                                     onChange={(e) =>
                                                         handleBillingChange(
                                                             "postal_code",
-                                                            e.target.value.replace(/\D/g, "")
+                                                            e.target.value.replace(
+                                                                /\D/g,
+                                                                "",
+                                                            ),
                                                         )
                                                     }
                                                     className="w-full rounded-xl border-slate-200 bg-white text-xs font-mono focus:border-blue-500 focus:ring-blue-500"
@@ -336,14 +386,18 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
                                         <div>
                                             <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                                                Nombre o Razón Social (sin régimen societario) *
+                                                Nombre o Razón Social (sin
+                                                régimen societario) *
                                             </label>
                                             <input
                                                 type="text"
                                                 placeholder="Ej. JUAN CARLOS LOPEZ SURIAN"
                                                 value={billing.business_name}
                                                 onChange={(e) =>
-                                                    handleBillingChange("business_name", e.target.value)
+                                                    handleBillingChange(
+                                                        "business_name",
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 className="w-full rounded-xl border-slate-200 bg-white text-xs focus:border-blue-500 focus:ring-blue-500"
                                             />
@@ -357,15 +411,23 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                                 <select
                                                     value={billing.tax_regime}
                                                     onChange={(e) =>
-                                                        handleBillingChange("tax_regime", e.target.value)
+                                                        handleBillingChange(
+                                                            "tax_regime",
+                                                            e.target.value,
+                                                        )
                                                     }
                                                     className="w-full rounded-xl border-slate-200 bg-white text-xs focus:border-blue-500 focus:ring-blue-500"
                                                 >
-                                                    {REGIMENES_FISCALES.map((reg) => (
-                                                        <option key={reg.code} value={reg.code}>
-                                                            {reg.label}
-                                                        </option>
-                                                    ))}
+                                                    {REGIMENES_FISCALES.map(
+                                                        (reg) => (
+                                                            <option
+                                                                key={reg.code}
+                                                                value={reg.code}
+                                                            >
+                                                                {reg.label}
+                                                            </option>
+                                                        ),
+                                                    )}
                                                 </select>
                                             </div>
 
@@ -376,12 +438,18 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                                 <select
                                                     value={billing.cfdi_use}
                                                     onChange={(e) =>
-                                                        handleBillingChange("cfdi_use", e.target.value)
+                                                        handleBillingChange(
+                                                            "cfdi_use",
+                                                            e.target.value,
+                                                        )
                                                     }
                                                     className="w-full rounded-xl border-slate-200 bg-white text-xs focus:border-blue-500 focus:ring-blue-500"
                                                 >
                                                     {USOS_CFDI.map((uso) => (
-                                                        <option key={uso.code} value={uso.code}>
+                                                        <option
+                                                            key={uso.code}
+                                                            value={uso.code}
+                                                        >
                                                             {uso.label}
                                                         </option>
                                                     ))}
@@ -391,14 +459,18 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
 
                                         <div>
                                             <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                                                Correo para envío de factura (XML y PDF) *
+                                                Correo para envío de factura
+                                                (XML y PDF) *
                                             </label>
                                             <input
                                                 type="email"
                                                 placeholder="facturacion@empresa.com"
                                                 value={billing.invoice_email}
                                                 onChange={(e) =>
-                                                    handleBillingChange("invoice_email", e.target.value)
+                                                    handleBillingChange(
+                                                        "invoice_email",
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 className="w-full rounded-xl border-slate-200 bg-white text-xs focus:border-blue-500 focus:ring-blue-500"
                                             />
@@ -415,7 +487,9 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                         checked={acceptedPolicies}
                                         onChange={(e) => {
                                             setFormError("");
-                                            setAcceptedPolicies(e.target.checked);
+                                            setAcceptedPolicies(
+                                                e.target.checked,
+                                            );
                                         }}
                                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 mt-0.5 cursor-pointer"
                                     />
@@ -431,7 +505,9 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                         , la{" "}
                                         <button
                                             type="button"
-                                            onClick={() => setLegalDoc("warranty")}
+                                            onClick={() =>
+                                                setLegalDoc("warranty")
+                                            }
                                             className="font-bold text-blue-600 hover:underline cursor-pointer"
                                         >
                                             Política de Garantías
@@ -439,12 +515,15 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                         y el{" "}
                                         <button
                                             type="button"
-                                            onClick={() => setLegalDoc("privacy")}
+                                            onClick={() =>
+                                                setLegalDoc("privacy")
+                                            }
                                             className="font-bold text-blue-600 hover:underline cursor-pointer"
                                         >
                                             Aviso de Privacidad
                                         </button>{" "}
-                                        de Siscomputec (recolección en sucursal en Cancún).
+                                        de Siscomputec (recolección en sucursal
+                                        en Cancún).
                                     </span>
                                 </label>
 
@@ -465,7 +544,8 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                             <div className="space-y-2 text-xs text-slate-600">
                                 <div className="flex items-center justify-between">
                                     <span>
-                                        Subtotal ({totalItems} {totalItems === 1 ? "ud." : "uds."})
+                                        Subtotal ({totalItems}{" "}
+                                        {totalItems === 1 ? "ud." : "uds."})
                                     </span>
                                     <span className="font-semibold text-slate-800">
                                         ${subtotalWithoutTax.toFixed(2)} MXN
@@ -473,7 +553,9 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <span>IVA ({Math.round(TAX_RATE * 100)}%)</span>
+                                    <span>
+                                        IVA ({Math.round(TAX_RATE * 100)}%)
+                                    </span>
                                     <span className="font-semibold text-slate-800">
                                         ${taxAmount.toFixed(2)} MXN
                                     </span>
@@ -522,15 +604,26 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                 ) : (
                     <div className="text-center py-12 space-y-3">
                         <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            <svg
+                                className="w-6 h-6"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="1.8"
+                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                                />
                             </svg>
                         </div>
                         <h3 className="text-sm font-extrabold text-slate-800">
                             Tu carrito está vacío
                         </h3>
                         <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                            Explora nuestro catálogo de cómputo, redes y CCTV para agregar productos.
+                            Explora nuestro catálogo de cómputo, redes y CCTV
+                            para agregar productos.
                         </p>
                         <Link
                             href="/"
@@ -558,7 +651,8 @@ export default function CustomerCartTab({ items = [], onBack, onCheckout }) {
                                     Resumen del pedido
                                 </span>
                                 <span className="text-[11px] text-slate-500">
-                                    Sub: ${subtotalWithoutTax.toFixed(2)} · IVA: ${taxAmount.toFixed(2)}
+                                    Sub: ${subtotalWithoutTax.toFixed(2)} · IVA:
+                                    ${taxAmount.toFixed(2)}
                                 </span>
                             </div>
 
