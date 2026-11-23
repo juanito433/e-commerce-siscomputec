@@ -37,6 +37,7 @@ return new class extends Migration
             $table->json('billing_data')->nullable();
             $table->timestamp('accepted_policies_at')->nullable();
             $table->timestamp('paid_at')->nullable();
+            $table->timestamps();
         });
     }
 

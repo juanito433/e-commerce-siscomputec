@@ -16,7 +16,8 @@ class CustomerController extends Controller
 
         $orders = [];
         if (Schema::hasTable('orders') && method_exists($user, 'orders')) {
-            $orders = $user->orders()->latest()->get();
+            $orderColumn = Schema::hasColumn('orders', 'created_at') ? 'created_at' : 'id';
+            $orders = $user->orders()->reorder($orderColumn, 'desc')->get();
         }
 
         $favorites = [];

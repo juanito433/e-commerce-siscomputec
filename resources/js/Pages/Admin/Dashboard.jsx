@@ -388,6 +388,7 @@ export default function Dashboard({
     const openCreateCategory = () => {
         setEditingCategory(null);
         categoryForm.reset();
+        categoryForm.clearErrors();
         setCategoryModalOpen(true);
     };
 
@@ -396,6 +397,7 @@ export default function Dashboard({
         categoryForm.setData({
             name: cat.name || "",
         });
+        categoryForm.clearErrors();
         setCategoryModalOpen(true);
     };
 
@@ -439,6 +441,7 @@ export default function Dashboard({
         const defaultCatId = String(categories[0].id);
         setEditingProduct(null);
         productForm.reset();
+        productForm.clearErrors();
         productForm.setData({
             name: "",
             sku: "",
@@ -455,6 +458,7 @@ export default function Dashboard({
 
     const openEditProduct = (prod) => {
         setEditingProduct(prod);
+        productForm.clearErrors();
         productForm.setData({
             name: prod.name || "",
             sku: prod.sku || "",
@@ -475,28 +479,24 @@ export default function Dashboard({
             String(productForm.data.category_id || "") ||
             (categories[0]?.id ? String(categories[0].id) : "");
 
-        productForm.transform((data) => ({
-            ...data,
-            category_id: resolvedCategoryId,
-        }));
+        if (!resolvedCategoryId) return;
 
-        const callbacks = {
+        productForm.setData("category_id", resolvedCategoryId);
+
+        const options = {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
-                productForm.transform((d) => d);
+                productForm.reset();
                 setProductModalOpen(false);
                 setDismissedMissingAlert(false);
-            },
-            onError: () => {
-                productForm.transform((d) => d);
             },
         };
 
         if (editingProduct) {
-            productForm.post(route("admin.products.update", editingProduct.id), callbacks);
+            productForm.post(route("admin.products.update", editingProduct.id), options);
         } else {
-            productForm.post(route("admin.products.store"), callbacks);
+            productForm.post(route("admin.products.store"), options);
         }
     };
 
@@ -1296,6 +1296,16 @@ export default function Dashboard({
                             {editingCategory ? "Editar Categoría" : "Nueva Categoría"}
                         </h3>
 
+                        {Object.keys(categoryForm.errors).length > 0 && (
+                            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2.5 rounded-xl text-xs space-y-1">
+                                {Object.values(categoryForm.errors).map((err, idx) => (
+                                    <p key={idx} className="font-semibold">
+                                        {err}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
                         <div>
                             <label className="block text-xs font-semibold text-slate-700 mb-1">
                                 Nombre de la categoría *
@@ -1308,9 +1318,6 @@ export default function Dashboard({
                                 placeholder="Ej. Switches, Routers, CCTV"
                                 className="w-full rounded-xl border-slate-200 text-xs sm:text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
                             />
-                            {categoryForm.errors.name && (
-                                <p className="text-xs text-rose-600 mt-1">{categoryForm.errors.name}</p>
-                            )}
                         </div>
 
                         <div className="flex justify-end gap-2 pt-2">
@@ -1348,6 +1355,16 @@ export default function Dashboard({
                             {editingProduct ? "Editar Producto / Servicio" : "Nuevo Producto / Servicio"}
                         </h3>
 
+                        {Object.keys(productForm.errors).length > 0 && (
+                            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-3.5 py-2.5 rounded-xl text-xs space-y-1">
+                                {Object.values(productForm.errors).map((err, idx) => (
+                                    <p key={idx} className="font-semibold">
+                                        {err}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="sm:col-span-2">
                                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -1356,6 +1373,7 @@ export default function Dashboard({
                                 <input
                                     type="text"
                                     required
+                                    maxLength={255}
                                     value={productForm.data.name}
                                     onChange={(e) => productForm.setData("name", e.target.value)}
                                     className="w-full rounded-xl border-slate-200 text-xs sm:text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
@@ -1392,11 +1410,6 @@ export default function Dashboard({
                                         </option>
                                     ))}
                                 </select>
-                                {productForm.errors.category_id && (
-                                    <p className="text-xs text-rose-600 mt-1">
-                                        {productForm.errors.category_id}
-                                    </p>
-                                )}
                             </div>
 
                             <div>
@@ -1441,11 +1454,6 @@ export default function Dashboard({
                                 }
                                 className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                             />
-                            {productForm.errors.image && (
-                                <p className="text-xs text-rose-600 mt-1">
-                                    {productForm.errors.image}
-                                </p>
-                            )}
                         </div>
 
                         <div>
