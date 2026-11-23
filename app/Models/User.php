@@ -38,7 +38,7 @@ class User extends Authenticatable
 
     public function orders()
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(Order::class)->orderByDesc('id');
     }
 
     public function reviews()
@@ -60,7 +60,7 @@ class User extends Authenticatable
         return $this->favorites()->where('product_id', $productId)->exists();
     }
     public function cart(): HasOne
-{
-    return $this->hasOne(Cart::class);
-}
+    {
+        return $this->hasOne(Cart::class);
+    }
 }

@@ -3,30 +3,36 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
 use App\Models\Category;
 use App\Models\Order;
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ProductController extends Controller
 {
-    // Mostrar el panel de administración con productos, categorías y métricas
+    // Mostrar el panel de administración con resumen, productos, categorías y órdenes
     public function index()
     {
-        // Cargamos los productos con su categoría y sus imágenes asociadas
         $products = Product::with(['category', 'images'])->latest()->get();
-        $categories = Category::all();
+        $categories = Category::withCount('products')->get();
 
-        // Control de órdenes seguras (si el modelo Order ya está creado)
-        $ordersCount = class_exists(Order::class) ? Order::where('status', 'pending')->count() : 0;
-        $totalSales = class_exists(Order::class) ? Order::where('status', 'completed')->sum('total') : 0.00;
+        $orders = collect();
+        $ordersCount = 0;
+        $totalSales = 0.00;
+
+        if (class_exists(Order::class) && Schema::hasTable('orders')) {
+            $orders = Order::with(['user', 'items'])->orderByDesc('id')->get();
+            $ordersCount = $orders->where('status', 'pending')->count();
+            $totalSales = (float) $orders->where('payment_status', 'paid')->sum('total');
+        }
 
         return Inertia::render('Admin/Dashboard', [
             'products' => $products,
-            'categories' => $categories, // Necesario para el selector del modal en React
+            'categories' => $categories,
+            'orders' => $orders,
             'ordersCount' => $ordersCount,
             'totalSales' => $totalSales,
         ]);
@@ -42,12 +48,11 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // Validación de archivo real
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_new' => 'boolean',
             'is_active' => 'boolean',
         ]);
 
-        // Crear el producto principal con los campos correctos de tu BD
         $product = Product::create([
             'category_id' => $validated['category_id'],
             'name' => $validated['name'],
@@ -60,7 +65,6 @@ class ProductController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        // Si se subió un archivo físico de imagen, guardarlo en storage/app/public/products
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
 
