@@ -63,4 +63,8 @@ class User extends Authenticatable
     {
         return $this->hasOne(Cart::class);
     }
+    public function paymentCards()
+{
+    return $this->hasMany(PaymentCard::class)->orderByDesc('is_default')->orderByDesc('id');
+}
 }

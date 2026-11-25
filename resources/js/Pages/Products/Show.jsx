@@ -17,9 +17,11 @@ export default function Show({
     useEffect(() => {
         setActiveCartItem(cartItem);
     }, [cartItem]);
+
     const { flash, errors } = usePage().props;
     const user = auth?.user || null;
     const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+
     const images = product?.images || [];
     const primaryImage =
         images.find((img) => img.is_primary)?.image_url ||
@@ -117,23 +119,18 @@ export default function Show({
         }
         if (!inStock || addingToCart) return;
 
-        // Agrega al carrito en base de datos y redirige directo a /carrito
-        router.post(
-            route("cart.store", product.id),
-            { quantity },
-            {
-                onStart: () => setAddingToCart(true),
-                onFinish: () => setAddingToCart(false),
-                onSuccess: () => {
-                    router.visit(route("cart.index"));
-                },
-            },
+        router.visit(
+            route("checkout.index", {
+                product_id: product.id,
+                quantity,
+            }),
         );
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-600 selection:text-white  ">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-600 selection:text-white">
             <Head title={`${product.name} - Siscomputec`} />
+
             {/* Navbar Superior */}
             <header className="bg-white/95 backdrop-blur-md shadow-xs sticky top-0 z-40 border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
@@ -151,7 +148,6 @@ export default function Show({
                         </span>
                     </Link>
 
-                    {/* Derecha: Favoritos, Carrito y Nombre del Cliente */}
                     <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
                         <Link
                             href={
@@ -225,7 +221,8 @@ export default function Show({
                     </div>
                 </div>
             </header>
-            {/* Barra superior encima del producto: Volver / Categoría / Nombre */}
+
+            {/* Barra superior encima del producto */}
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-2 space-y-2.5">
                 <nav className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
                     <button
@@ -267,12 +264,9 @@ export default function Show({
                     </div>
                 )}
             </div>
-            {/* Contenedor Principal: Móvil/Tableta (apilado + barra inferior fija) / PC (2 columnas con panel sticky) */}
+
             <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-start">
-                    {/* =========================================================
-                        COLUMNA IZQUIERDA (7 cols): Galería, Resumen Móvil/Tablet y Detalles
-                    ========================================================= */}
                     <div className="lg:col-span-7 space-y-5 sm:space-y-6">
                         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-xs">
                             <div className="relative w-full h-72 sm:h-96 md:h-[430px] bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center border border-slate-100 p-6 sm:p-10">
@@ -320,7 +314,7 @@ export default function Show({
                             )}
                         </div>
 
-                        {/* Resumen arriba del contenido en Teléfono y Tableta (< lg) */}
+                        {/* Resumen Móvil/Tablet */}
                         <div className="lg:hidden bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-1 min-w-0">
@@ -415,7 +409,7 @@ export default function Show({
                             )}
                         </div>
 
-                        {/* Tarjeta de Descripción y Especificaciones */}
+                        {/* Descripción y especificaciones */}
                         <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200 shadow-xs space-y-5">
                             <div className="border-b border-slate-100 pb-4">
                                 <h2 className="text-lg sm:text-xl font-black text-slate-900">
@@ -509,9 +503,7 @@ export default function Show({
                         </div>
                     </div>
 
-                    {/* =========================================================
-                        COLUMNA DERECHA (5 cols): Caja de Compra FIJA en PC (lg+)
-                    ========================================================= */}
+                    {/* Columna derecha: Caja de compra en PC */}
                     <aside className="hidden lg:block lg:col-span-5 lg:sticky lg:top-28 space-y-4">
                         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-5">
                             <div className="flex items-start justify-between gap-3">
@@ -713,9 +705,8 @@ export default function Show({
                     </aside>
                 </div>
             </main>
-            {/* =========================================================
-                BARRA INFERIOR FIJA EN TELÉFONO Y TABLETA (< lg)
-            ========================================================= */}
+
+            {/* Barra inferior fija en teléfono y tableta (< lg) */}
             <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-2xl px-3 sm:px-6 py-3">
                 <div className="max-w-3xl mx-auto space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
@@ -795,6 +786,7 @@ export default function Show({
                     </div>
                 </div>
             </div>
+
             <AddedToCartDrawer
                 open={cartDrawerOpen}
                 onClose={() => setCartDrawerOpen(false)}
@@ -805,7 +797,8 @@ export default function Show({
                 cartCount={currentCartCount}
                 relatedProducts={relatedProducts}
             />
-            <StoreFooter />;
+
+            <StoreFooter />
         </div>
     );
 }

@@ -2,129 +2,204 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class OrderController extends Controller
 {
+    public function create(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $directProduct = null;
+        $quantity = max(1, (int) $request->query('quantity', 1));
+
+        if ($request->filled('product_id')) {
+            $directProduct = Product::with(['category', 'images'])
+                ->where('id', (int) $request->query('product_id'))
+                ->where('is_active', true)
+                ->first();
+        }
+
+        $cartItems = [];
+        if (Schema::hasTable('carts') && Schema::hasTable('cart_items')) {
+            $cart = Cart::with(['items.product.category', 'items.product.images'])
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($cart) {
+                $cartItems = $cart->items
+                    ->filter(fn($item) => $item->product && $item->product->is_active)
+                    ->values();
+            }
+        }
+
+        $cards = Schema::hasTable('payment_cards')
+            ? $user->paymentCards()->get()
+            : collect();
+
+        return Inertia::render('Checkout/Index', [
+            'auth' => ['user' => $user],
+            'directProduct' => $directProduct,
+            'quantity' => $quantity,
+            'cartItems' => $cartItems,
+            'cards' => $cards,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'accepted_policies' => ['required', 'accepted'],
-            'requires_invoice' => ['required', 'boolean'],
-            'delivery_method' => ['nullable', 'in:pickup,local_delivery'],
-            'payment_provider' => ['nullable', 'in:pay_on_pickup,stripe,mercadopago,conekta'],
-            'billing' => ['nullable', 'array', 'required_if:requires_invoice,true'],
-            'billing.rfc' => ['required_if:requires_invoice,true', 'string', 'regex:/^([A-ZÑ&]{3,4})\d{6}([A-Z\d]{3})$/i'],
-            'billing.business_name' => ['required_if:requires_invoice,true', 'string', 'max:255'],
-            'billing.postal_code' => ['required_if:requires_invoice,true', 'digits:5'],
-            'billing.tax_regime' => ['required_if:requires_invoice,true', 'string', 'max:10'],
-            'billing.cfdi_use' => ['required_if:requires_invoice,true', 'string', 'max:10'],
-            'billing.invoice_email' => ['required_if:requires_invoice,true', 'email', 'max:255'],
-        ], [
-            'accepted_policies.accepted' => 'Debes aceptar los Términos y Condiciones y el Aviso de Privacidad.',
-            'billing.rfc.regex' => 'El formato del RFC no es válido.',
-            'billing.postal_code.digits' => 'El código postal fiscal debe tener 5 dígitos.',
+            'payment_method' => 'required|in:cash,card',
+            'payment_card_id' => 'nullable|integer',
+            'delivery_method' => 'required|in:pickup,local_delivery',
+            'direct_product_id' => 'nullable|integer|exists:products,id',
+            'quantity' => 'nullable|integer|min:1|max:999',
+            'requires_invoice' => 'boolean',
+            'billing_data' => 'nullable|array',
+            'accepted_policies' => 'required|accepted',
         ]);
 
         /** @var \App\Models\User $user */
-        $user = $request->user();
-        $cart = $user->cart()->with('items')->first();
+        $user = Auth::user();
+        $isDirectBuy = !empty($validated['direct_product_id']);
 
-        if (! $cart || $cart->items->isEmpty()) {
-            return back()->withErrors(['cart' => 'Tu carrito está vacío.']);
+        if ($validated['payment_method'] === 'card') {
+            $hasCard = Schema::hasTable('payment_cards') && $user->paymentCards()->exists();
+            if (!$hasCard) {
+                return redirect()->back()->withErrors([
+                    'payment_card_id' => 'No tienes una tarjeta registrada. Agrégala en tu panel de cliente para continuar.',
+                ]);
+            }
         }
 
-        $billingData = null;
-        if ($validated['requires_invoice']) {
-            $billingData = [
-                'rfc' => strtoupper(trim($validated['billing']['rfc'])),
-                'business_name' => trim($validated['billing']['business_name']),
-                'postal_code' => trim($validated['billing']['postal_code']),
-                'tax_regime' => $validated['billing']['tax_regime'],
-                'cfdi_use' => $validated['billing']['cfdi_use'],
-                'invoice_email' => trim($validated['billing']['invoice_email']),
-            ];
-        }
+        $order = DB::transaction(function () use ($user, $validated, $isDirectBuy) {
+            $subtotal = 0;
+            $itemsPayload = [];
+            $cart = null;
 
-        $order = DB::transaction(function () use ($user, $cart, $validated, $billingData) {
-            $totalWithTax = 0;
-            $preparedLines = [];
-
-            foreach ($cart->items as $cartItem) {
-                // Bloqueo pesimista para evitar sobreventa concurrente
-                $product = Product::where('id', $cartItem->product_id)
+            if ($isDirectBuy) {
+                $product = Product::where('id', $validated['direct_product_id'])
                     ->where('is_active', true)
-                    ->lockForUpdate()
-                    ->first();
+                    ->firstOrFail();
 
-                if (! $product) {
-                    throw ValidationException::withMessages([
-                        'cart' => 'Uno de los productos ya no está disponible en el catálogo.',
-                    ]);
-                }
+                $qty = max(1, (int) ($validated['quantity'] ?? 1));
+                $unitPrice = (float) $product->price;
+                $lineTotal = round($unitPrice * $qty, 2);
+                $subtotal = $lineTotal;
 
-                if ($product->stock < $cartItem->quantity) {
-                    throw ValidationException::withMessages([
-                        'cart' => "Stock insuficiente para {$product->name} (disponibles: {$product->stock}).",
-                    ]);
-                }
-
-                $unitPrice = round((float) $product->price, 2);
-                $lineTotal = round($unitPrice * $cartItem->quantity, 2);
-                $totalWithTax += $lineTotal;
-
-                $preparedLines[] = [
+                $itemsPayload[] = [
                     'product_id' => $product->id,
                     'product_name' => $product->name,
                     'product_sku' => $product->sku,
+                    'quantity' => $qty,
                     'unit_price' => $unitPrice,
-                    'quantity' => $cartItem->quantity,
                     'line_total' => $lineTotal,
                 ];
 
-                // Descontar inventario
-                $product->decrement('stock', $cartItem->quantity);
+                if (!is_null($product->stock)) {
+                    $product->decrement('stock', min($qty, max(0, (int) $product->stock)));
+                }
+            } else {
+                $cart = Cart::with(['items.product'])
+                    ->where('user_id', $user->id)
+                    ->first();
+
+                if (!$cart || $cart->items->isEmpty()) {
+                    abort(422, 'Tu carrito está vacío.');
+                }
+
+                foreach ($cart->items as $item) {
+                    $product = $item->product;
+                    if (!$product || !$product->is_active) {
+                        continue;
+                    }
+
+                    $qty = max(1, (int) $item->quantity);
+                    $unitPrice = (float) $product->price;
+                    $lineTotal = round($unitPrice * $qty, 2);
+                    $subtotal += $lineTotal;
+
+                    $itemsPayload[] = [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'product_sku' => $product->sku,
+                        'quantity' => $qty,
+                        'unit_price' => $unitPrice,
+                        'line_total' => $lineTotal,
+                    ];
+
+                    if (!is_null($product->stock)) {
+                        $product->decrement('stock', min($qty, max(0, (int) $product->stock)));
+                    }
+                }
             }
 
-            $totalWithTax = round($totalWithTax, 2);
-            $subtotalWithoutTax = round($totalWithTax / 1.16, 2);
-            $taxAmount = round($totalWithTax - $subtotalWithoutTax, 2);
+            $total = round($subtotal, 2);
+            $netSubtotal = round($total / 1.16, 2);
+            $taxAmount = round($total - $netSubtotal, 2);
 
-            $order = Order::create([
+            $isCash = $validated['payment_method'] === 'cash';
+            $selectedCard = null;
+            if (!$isCash && Schema::hasTable('payment_cards')) {
+                $selectedCard = !empty($validated['payment_card_id'])
+                    ? $user->paymentCards()->where('id', $validated['payment_card_id'])->first()
+                    : $user->paymentCards()->first();
+            }
+
+            $paymentStatus = $isCash ? 'unpaid' : 'paid';
+            $paymentProvider = $isCash
+                ? ($validated['delivery_method'] === 'local_delivery' ? 'cash_on_delivery' : 'cash_on_pickup')
+                : ('card_test' . ($selectedCard ? "_{$selectedCard->brand}_{$selectedCard->last4}" : ''));
+
+            $createdOrder = Order::create([
                 'order_number' => 'SC-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4)),
                 'user_id' => $user->id,
                 'status' => 'pending',
-                'payment_status' => 'unpaid',
-                'payment_provider' => $validated['payment_provider'] ?? 'pay_on_pickup',
-                'delivery_method' => $validated['delivery_method'] ?? 'pickup',
+                'payment_status' => $paymentStatus,
+                'payment_provider' => $paymentProvider,
+                'delivery_method' => $validated['delivery_method'],
                 'pickup_code' => strtoupper(Str::random(6)),
-                'subtotal' => $subtotalWithoutTax,
+                'subtotal' => $netSubtotal,
                 'tax_amount' => $taxAmount,
-                'total' => $totalWithTax,
+                'total' => $total,
                 'currency' => 'MXN',
-                'requires_invoice' => $validated['requires_invoice'],
-                'billing_data' => $billingData,
+                'requires_invoice' => !empty($validated['requires_invoice']),
+                'billing_data' => !empty($validated['requires_invoice']) ? ($validated['billing_data'] ?? null) : null,
                 'accepted_policies_at' => now(),
+                'paid_at' => $isCash ? null : now(),
             ]);
 
-            $order->items()->createMany($preparedLines);
+            $createdOrder->items()->createMany($itemsPayload);
 
-            // Vaciar carrito una vez creada la orden
-            $cart->items()->delete();
+            if (!$isDirectBuy && $cart) {
+                $cart->items()->delete();
+            }
 
-            return $order;
+            return $createdOrder;
         });
 
-        // Punto de extensión futuro para pasarela de pagos:
-        // Si payment_provider === 'stripe' o 'mercadopago', aquí creas la sesión de pago
-        // usando $order->total y $order->order_number, y rediriges al checkout externo.
+        return redirect()->route('orders.ticket', $order->id);
+    }
 
-        return redirect('/mi-cuenta?tab=orders')
-            ->with('success', "Pedido {$order->order_number} registrado correctamente. Código de recolección: {$order->pickup_code}");
+    public function ticket(Order $order)
+    {
+        if ($order->user_id !== Auth::id() && Auth::user()?->role !== 'admin') {
+            abort(403);
+        }
+
+        $order->load(['items', 'user']);
+
+        return Inertia::render('Orders/Ticket', [
+            'order' => $order,
+        ]);
     }
 }

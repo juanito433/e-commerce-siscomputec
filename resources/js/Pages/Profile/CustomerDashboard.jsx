@@ -8,6 +8,7 @@ import CustomerAddressesTab from "../../Components/Customer/CustomerAddressesTab
 import CustomerFavoritesTab from "../../Components/Customer/CustomerFavoritesTab";
 import CustomerReviewsTab from "../../Components/Customer/CustomerReviewsTab";
 import CustomerCartTab from "../../Components/Customer/CustomerCartTab";
+import AnimatedCardManager from "@/Components/Customer/AnimatedCardManager";
 
 export default function CustomerDashboard({
     auth,
@@ -16,6 +17,7 @@ export default function CustomerDashboard({
     addresses = [],
     reviews = [],
     cartItems = [],
+    cards = [],
 }) {
     const { flash } = usePage().props;
     const user = auth?.user || {};
@@ -32,13 +34,18 @@ export default function CustomerDashboard({
         "favorites",
         "reviews",
         "cart",
+        "cards",
     ];
 
     const getInitialTab = () => {
         if (typeof window === "undefined") return "overview";
         const params = new URLSearchParams(window.location.search);
         const tab = params.get("tab");
-        return validTabs.includes(tab) ? tab : "overview";
+        if (tab && validTabs.includes(tab)) return tab;
+        if (window.location.hash === "#tarjetas" || params.get("from_checkout") === "1") {
+            return "cards";
+        }
+        return "overview";
     };
 
     const [activeTab, setActiveTab] = useState(getInitialTab);
@@ -132,6 +139,26 @@ export default function CustomerDashboard({
                         strokeLinejoin="round"
                         strokeWidth="1.8"
                         d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                    />
+                </svg>
+            ),
+        },
+        {
+            id: "cards",
+            label: "Tarjetas",
+            count: cards.length,
+            icon: (
+                <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                     />
                 </svg>
             ),
@@ -316,7 +343,6 @@ export default function CustomerDashboard({
                 </div>
             </header>
 
-            {/* Backdrop oscuro al abrir el sidebar deslizable en móvil */}
             {mobileNavOpen && (
                 <div
                     onClick={() => setMobileNavOpen(false)}
@@ -326,7 +352,6 @@ export default function CustomerDashboard({
             )}
 
             <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1 flex flex-col lg:flex-row gap-6 lg:gap-8">
-                {/* SIDEBAR: deslizable en móvil/pantallas reducidas, fijo en escritorio */}
                 <aside
                     className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[82vw] bg-white border-r border-slate-200 shadow-2xl transform transition-transform duration-300 ease-out lg:static lg:inset-auto lg:z-auto lg:w-64 lg:max-w-none lg:bg-transparent lg:border-0 lg:shadow-none lg:transform-none lg:flex-shrink-0 ${
                         mobileNavOpen
@@ -466,6 +491,10 @@ export default function CustomerDashboard({
                             orders={orders}
                             onBack={() => selectTab("overview")}
                         />
+                    )}
+
+                    {activeTab === "cards" && (
+                        <AnimatedCardManager cards={cards} />
                     )}
 
                     {activeTab === "addresses" && (

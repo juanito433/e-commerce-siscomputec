@@ -118,6 +118,15 @@ Route::middleware('auth')->group(function () {
 
     // Checkout y creación de orden
     Route::post('/ordenes', [OrderController::class, 'store'])->name('orders.store');
+
+    // Tarjetas del cliente (modo prueba)
+    Route::post('/mi-cuenta/tarjetas', [CustomerController::class, 'storeCard'])->name('customer.cards.store');
+    Route::delete('/mi-cuenta/tarjetas/{paymentCard}', [CustomerController::class, 'destroyCard'])->name('customer.cards.destroy');
+
+    // Pantalla de Checkout por pasos y vista de Ticket / QR / Factura WhatsApp
+    Route::get('/checkout', [OrderController::class, 'create'])->name('checkout.index');
+    Route::post('/ordenes', [OrderController::class, 'store'])->name('orders.store');
+    Route::get('/ordenes/{order}/ticket', [OrderController::class, 'ticket'])->name('orders.ticket');
 });
 
 /*
