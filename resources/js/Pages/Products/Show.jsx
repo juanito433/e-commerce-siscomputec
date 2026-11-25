@@ -3,6 +3,19 @@ import { Head, Link, router, usePage } from "@inertiajs/react";
 import AddedToCartDrawer from "../../Components/Customer/AddedToCartDrawer";
 import StoreFooter from "../../Components/StoreFooter";
 
+const NEW_BADGE_MAX_DAYS = 14;
+
+function isProductRecentlyNew(product) {
+    if (!product?.is_new) return false;
+    if (!product?.created_at) return true;
+
+    const createdTime = new Date(product.created_at).getTime();
+    if (Number.isNaN(createdTime)) return true;
+
+    const ageInDays = (Date.now() - createdTime) / (1000 * 60 * 60 * 24);
+    return ageInDays <= NEW_BADGE_MAX_DAYS;
+}
+
 export default function Show({
     auth,
     product,
@@ -51,6 +64,7 @@ export default function Show({
     const totalPrice = unitPrice * quantity;
     const stock = Number(product?.stock || 0);
     const inStock = stock > 0;
+    const showNewBadge = isProductRecentlyNew(product);
 
     const handleBack = () => {
         if (typeof window !== "undefined" && window.history.length > 1) {
@@ -246,6 +260,18 @@ export default function Show({
                     </span>
                 </nav>
 
+                {!inStock && (
+                    <div
+                        role="status"
+                        className="bg-rose-50 border-2 border-rose-300 text-rose-900 px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2.5"
+                    >
+                        <span className="font-black text-rose-700">✕</span>
+                        <span>
+                            Este producto está agotado (sin existencias disponibles por el momento).
+                        </span>
+                    </div>
+                )}
+
                 {flash?.success && (
                     <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-between gap-2">
                         <span>✓ {flash.success}</span>
@@ -259,8 +285,9 @@ export default function Show({
                 )}
 
                 {errors?.cart && (
-                    <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-2.5 rounded-2xl text-xs font-bold">
-                        {errors.cart}
+                    <div className="bg-rose-50 border border-rose-300 text-rose-800 px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2">
+                        <span>✕</span>
+                        <span>{errors.cart}</span>
                     </div>
                 )}
             </div>
@@ -275,7 +302,7 @@ export default function Show({
                                     alt={product.name}
                                     className="w-full h-full object-contain transition-all duration-300"
                                 />
-                                {product.is_new && (
+                                {showNewBadge && (
                                     <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-black px-3 py-1 rounded-full shadow-xs">
                                         NUEVO
                                     </span>
@@ -385,13 +412,13 @@ export default function Show({
                                 </div>
 
                                 {inStock ? (
-                                    <span className="text-xs font-extrabold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-full">
+                                    <span className="text-xs font-extrabold text-emerald-700 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                         Stock: {stock}
                                     </span>
                                 ) : (
-                                    <span className="text-xs font-extrabold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full">
-                                        Agotado
+                                    <span className="text-xs font-extrabold text-rose-800 bg-rose-50 border border-rose-300 px-3 py-1.5 rounded-full">
+                                        ✕ Agotado
                                     </span>
                                 )}
                             </div>
@@ -453,7 +480,7 @@ export default function Show({
                                             Condición
                                         </span>
                                         <span className="font-extrabold text-slate-900">
-                                            {product.is_new
+                                            {showNewBadge
                                                 ? "Nuevo"
                                                 : "Estándar"}
                                         </span>
@@ -463,7 +490,7 @@ export default function Show({
                                             Disponibilidad
                                         </span>
                                         <span
-                                            className={`font-extrabold ${inStock ? "text-emerald-600" : "text-rose-600"}`}
+                                            className={`font-extrabold ${inStock ? "text-emerald-700" : "text-rose-700"}`}
                                         >
                                             {inStock
                                                 ? `${stock} unidades`
@@ -593,13 +620,13 @@ export default function Show({
                                     Disponibilidad:
                                 </span>
                                 {inStock ? (
-                                    <span className="text-xs font-extrabold text-emerald-600 flex items-center gap-1.5">
+                                    <span className="text-xs font-extrabold text-emerald-700 flex items-center gap-1.5">
                                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                         En stock ({stock} disponibles)
                                     </span>
                                 ) : (
-                                    <span className="text-xs font-extrabold text-rose-600">
-                                        Sin existencias
+                                    <span className="text-xs font-extrabold text-rose-800 bg-rose-50 border border-rose-300 px-2.5 py-0.5 rounded-full">
+                                        ✕ Sin existencias
                                     </span>
                                 )}
                             </div>
@@ -733,8 +760,8 @@ export default function Show({
                                 </button>
                             </div>
                         ) : (
-                            <span className="text-xs font-extrabold text-rose-600">
-                                Agotado
+                            <span className="text-xs font-extrabold text-rose-800 bg-rose-50 border border-rose-300 px-2.5 py-1 rounded-xl">
+                                ✕ Agotado
                             </span>
                         )}
 

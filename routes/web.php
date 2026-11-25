@@ -9,6 +9,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -35,7 +36,10 @@ Route::get('/', function () {
     }
 
     return Inertia::render('Welcome', [
-        'products' => Product::with(['category', 'images'])->where('is_active', true)->latest()->get(),
+        'products' => Product::with(['category', 'images'])
+            ->where('is_active', true)
+            ->latest()
+            ->get(),
         'categories' => Category::all(),
         'favoriteIds' => $favoriteIds,
         'cartCount' => $cartCount,
@@ -69,6 +73,7 @@ Route::get('/products/{product}', function (Product $product) {
 
     $relatedProducts = Product::with(['category', 'images'])
         ->where('is_active', true)
+        ->where('stock', '>', 0)
         ->where('id', '!=', $product->id)
         ->orderByRaw('category_id = ? DESC', [$product->category_id])
         ->latest()
@@ -111,6 +116,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/mi-cuenta/facturacion', [CustomerController::class, 'updateBilling'])->name('customer.billing.update');
     Route::post('/ordenes/{order}/factura-whatsapp', [OrderController::class, 'markInvoiceWhatsapp'])->name('orders.invoice.whatsapp');
 
+    // Tarjetas del cliente (modo prueba)
+    Route::post('/mi-cuenta/tarjetas', [CustomerController::class, 'storeCard'])->name('customer.cards.store');
+    Route::delete('/mi-cuenta/tarjetas/{paymentCard}', [CustomerController::class, 'destroyCard'])->name('customer.cards.destroy');
+
     // Favoritos / Me Gustas
     Route::post('/favoritos/{product}/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
 
@@ -119,13 +128,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/carrito/{product}', [CartController::class, 'store'])->name('cart.store');
     Route::patch('/carrito/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
     Route::delete('/carrito/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
-
-    // Checkout y creación de orden
-    Route::post('/ordenes', [OrderController::class, 'store'])->name('orders.store');
-
-    // Tarjetas del cliente (modo prueba)
-    Route::post('/mi-cuenta/tarjetas', [CustomerController::class, 'storeCard'])->name('customer.cards.store');
-    Route::delete('/mi-cuenta/tarjetas/{paymentCard}', [CustomerController::class, 'destroyCard'])->name('customer.cards.destroy');
 
     // Pantalla de Checkout por pasos y vista de Ticket / QR / Factura WhatsApp
     Route::get('/checkout', [OrderController::class, 'create'])->name('checkout.index');

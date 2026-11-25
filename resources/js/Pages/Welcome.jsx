@@ -1,9 +1,22 @@
 import { useState, useMemo } from "react";
-import { Head, Link, router } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import ProductCard from "../Components/ProductCard";
 import CatalogNavbar from "../Components/CatalogNavbar";
 import { useUserLocation } from "../Hooks/useUserLocation";
 import StoreFooter from "../Components/StoreFooter";
+
+const NEW_BADGE_MAX_DAYS = 14;
+
+function isProductRecentlyNew(product) {
+    if (!product?.is_new) return false;
+    if (!product?.created_at) return true;
+
+    const createdTime = new Date(product.created_at).getTime();
+    if (Number.isNaN(createdTime)) return true;
+
+    const ageInDays = (Date.now() - createdTime) / (1000 * 60 * 60 * 24);
+    return ageInDays <= NEW_BADGE_MAX_DAYS;
+}
 
 export default function Welcome({
     auth,
@@ -20,6 +33,7 @@ export default function Welcome({
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const userLocation = useUserLocation();
+
     const toggleCategory = (catName) => {
         setSelectedCategories((prev) =>
             prev.includes(catName)
@@ -34,11 +48,25 @@ export default function Welcome({
         router.post(route("logout"));
     };
 
+    const isSearching = searchTerm.trim().length > 0;
+
     const filteredProducts = useMemo(() => {
-        let result = products.filter((product) => {
+        const normalizedQuery = searchTerm.trim().toLowerCase();
+
+        const result = products.filter((product) => {
+            const stock = Number(product.stock ?? 0);
+            const hasStock = stock > 0;
+
+            // Sin búsqueda: ocultar productos sin stock del catálogo principal.
+            // Con búsqueda (nombre o SKU): permitir ver también los agotados.
+            if (!isSearching && !hasStock) {
+                return false;
+            }
+
             const matchSearch =
-                product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
+                !isSearching ||
+                product.name?.toLowerCase().includes(normalizedQuery) ||
+                product.sku?.toLowerCase().includes(normalizedQuery);
 
             const categoryName = product.category?.name || "";
             const matchCategory =
@@ -65,15 +93,18 @@ export default function Welcome({
                     (a, b) => Number(b.price) - Number(a.price),
                 );
             case "nuevos":
-                return [...result].sort((a, b) =>
-                    a.is_new === b.is_new ? 0 : a.is_new ? -1 : 1,
-                );
+                return [...result].sort((a, b) => {
+                    const aNew = isProductRecentlyNew(a);
+                    const bNew = isProductRecentlyNew(b);
+                    return aNew === bNew ? 0 : aNew ? -1 : 1;
+                });
             default:
                 return result;
         }
     }, [
         products,
         searchTerm,
+        isSearching,
         selectedCategories,
         minPrice,
         maxPrice,
@@ -87,7 +118,7 @@ export default function Welcome({
             {/* Navbar */}
             <CatalogNavbar
                 user={auth?.user}
-                searchQuery={searchTerm} // <-- usa el nombre de tu estado de búsqueda
+                searchQuery={searchTerm}
                 onSearchChange={setSearchTerm}
                 favoritesCount={favoriteIds?.length ?? 0}
                 cartCount={cartCount ?? 0}
@@ -243,6 +274,9 @@ export default function Welcome({
                             </h2>
                             <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
                                 Mostrando {filteredProducts.length} resultados
+                                {isSearching
+                                    ? ` para "${searchTerm.trim()}"`
+                                    : " en existencia"}
                             </p>
                         </div>
                         <div className="w-full sm:w-auto">
@@ -273,24 +307,46 @@ export default function Welcome({
                                         (img) => img.is_primary,
                                     )?.image_url ||
                                     product.images?.[0]?.image_url;
+                                const isOutOfStock =
+                                    Number(product.stock ?? 0) <= 0;
+                                const showNewBadge =
+                                    isProductRecentlyNew(product);
 
                                 return (
-                                    <ProductCard
+                                    <div
                                         key={`${product.id}-${sortOrder}`}
-                                        id={product.id}
-                                        name={product.name}
-                                        category={
-                                            product.category?.name || "General"
-                                        }
-                                        price={product.price}
-                                        sku={product.sku}
-                                        imageUrl={primaryImage}
-                                        isNew={product.is_new}
-                                        isFavorite={favoriteIds.includes(
-                                            product.id,
+                                        className="relative"
+                                    >
+                                        {isOutOfStock && (
+                                            <div
+                                                role="status"
+                                                className="mb-2 inline-flex items-center gap-1.5 bg-rose-50 border border-rose-300 text-rose-900 text-[11px] font-extrabold px-3 py-1 rounded-xl"
+                                            >
+                                                <span>✕</span>
+                                                <span>Agotado · Sin stock</span>
+                                            </div>
                                         )}
-                                        delay={index * 40}
-                                    />
+
+                                        <ProductCard
+                                            key={`${product.id}-${sortOrder}`}
+                                            id={product.id}
+                                            name={product.name}
+                                            category={
+                                                product.category?.name ||
+                                                "General"
+                                            }
+                                            price={product.price}
+                                            sku={product.sku}
+                                            stock={product.stock}
+                                            createdAt={product.created_at}
+                                            imageUrl={primaryImage}
+                                            isNew={showNewBadge}
+                                            isFavorite={favoriteIds.includes(
+                                                product.id,
+                                            )}
+                                            delay={index * 40}
+                                        />
+                                    </div>
                                 );
                             })}
                         </div>
