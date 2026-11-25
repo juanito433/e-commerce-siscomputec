@@ -107,6 +107,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/mi-cuenta', [CustomerController::class, 'index'])->name('customer.dashboard');
     Route::patch('/mi-cuenta/perfil', [CustomerController::class, 'updateProfile'])->name('customer.profile.update');
 
+    // Facturación y Tarjetas
+    Route::patch('/mi-cuenta/facturacion', [CustomerController::class, 'updateBilling'])->name('customer.billing.update');
+    Route::post('/ordenes/{order}/factura-whatsapp', [OrderController::class, 'markInvoiceWhatsapp'])->name('orders.invoice.whatsapp');
+
     // Favoritos / Me Gustas
     Route::post('/favoritos/{product}/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
 

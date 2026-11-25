@@ -8,6 +8,7 @@ import CustomerAddressesTab from "../../Components/Customer/CustomerAddressesTab
 import CustomerFavoritesTab from "../../Components/Customer/CustomerFavoritesTab";
 import CustomerReviewsTab from "../../Components/Customer/CustomerReviewsTab";
 import CustomerCartTab from "../../Components/Customer/CustomerCartTab";
+import CustomerBillingTab from "../../Components/Customer/CustomerBillingTab";
 import AnimatedCardManager from "@/Components/Customer/AnimatedCardManager";
 
 export default function CustomerDashboard({
@@ -35,6 +36,7 @@ export default function CustomerDashboard({
         "reviews",
         "cart",
         "cards",
+        "billing",
     ];
 
     const getInitialTab = () => {
@@ -42,7 +44,10 @@ export default function CustomerDashboard({
         const params = new URLSearchParams(window.location.search);
         const tab = params.get("tab");
         if (tab && validTabs.includes(tab)) return tab;
-        if (window.location.hash === "#tarjetas" || params.get("from_checkout") === "1") {
+        if (
+            window.location.hash === "#tarjetas" ||
+            params.get("from_checkout") === "1"
+        ) {
             return "cards";
         }
         return "overview";
@@ -159,6 +164,25 @@ export default function CustomerDashboard({
                         strokeLinejoin="round"
                         strokeWidth="1.8"
                         d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                </svg>
+            ),
+        },
+        {
+            id: "billing",
+            label: "Facturación",
+            icon: (
+                <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.8"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                 </svg>
             ),
@@ -495,6 +519,13 @@ export default function CustomerDashboard({
 
                     {activeTab === "cards" && (
                         <AnimatedCardManager cards={cards} />
+                    )}
+
+                    {activeTab === "billing" && (
+                        <CustomerBillingTab
+                            user={user}
+                            onBack={() => selectTab("overview")}
+                        />
                     )}
 
                     {activeTab === "addresses" && (

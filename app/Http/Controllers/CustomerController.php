@@ -38,7 +38,7 @@ class CustomerController extends Controller
                 })->values();
             }
         }
-        
+
         $cards = [];
         if (Schema::hasTable('payment_cards') && method_exists($user, 'paymentCards')) {
             $cards = $user->paymentCards()->get();
@@ -113,5 +113,27 @@ class CustomerController extends Controller
         $paymentCard->delete();
 
         return redirect()->back()->with('success', 'Tarjeta eliminada.');
+    }
+    public function updateBilling(Request $request)
+    {
+        $validated = $request->validate([
+            'billing_rfc' => 'required|string|min:12|max:13',
+            'billing_business_name' => 'required|string|max:180',
+            'billing_regime' => 'required|string|max:10',
+            'billing_cfdi_use' => 'required|string|max:10',
+            'billing_zip_code' => 'required|digits:5',
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $user->update([
+            'billing_rfc' => strtoupper(trim($validated['billing_rfc'])),
+            'billing_business_name' => trim($validated['billing_business_name']),
+            'billing_regime' => trim($validated['billing_regime']),
+            'billing_cfdi_use' => trim($validated['billing_cfdi_use']),
+            'billing_zip_code' => trim($validated['billing_zip_code']),
+        ]);
+
+        return redirect()->back()->with('success', 'Datos de facturación guardados correctamente.');
     }
 }

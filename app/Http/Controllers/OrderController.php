@@ -202,4 +202,15 @@ class OrderController extends Controller
             'order' => $order,
         ]);
     }
+    public function markInvoiceWhatsapp(\App\Models\Order $order)
+    {
+        if ($order->user_id !== Auth::id() && Auth::user()?->role !== 'admin') {
+            abort(403);
+        }
+
+        $order->increment('invoice_whatsapp_count');
+        $order->forceFill(['invoice_requested_at' => now()])->save();
+
+        return back();
+    }
 }

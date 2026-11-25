@@ -1,8 +1,10 @@
-import { Head, Link } from "@inertiajs/react";
-
-const WHATSAPP_BILLING_NUMBER = "529321027425"; // Cambia por el WhatsApp de facturación de Siscomputec
+import { Head, Link, usePage } from "@inertiajs/react";
+import { triggerInvoiceWhatsapp } from "@/Utils/invoiceWhatsapp";
 
 export default function OrderTicket({ order }) {
+    const { auth } = usePage().props;
+    const user = auth?.user || order?.user || {};
+
     const isCashUnpaid =
         order.payment_status !== "paid" &&
         (String(order.payment_provider || "").startsWith("cash") ||
@@ -16,30 +18,10 @@ export default function OrderTicket({ order }) {
     });
 
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-        qrPayload
+        qrPayload,
     )}`;
 
-    const itemsLines = (order.items || [])
-        .map((it) => `- ${it.quantity}x ${it.product_name}: $${Number(it.line_total || 0).toFixed(2)} MXN`)
-        .join("\n");
-
-    const invoiceText = [
-        `Hola Siscomputec, necesito facturar mi compra:`,
-        `Folio: ${order.order_number || order.id}`,
-        `Código de orden: ${order.pickup_code || "-"}`,
-        `Total: $${Number(order.total || 0).toFixed(2)} MXN`,
-        itemsLines ? `Detalle:\n${itemsLines}` : "",
-        order.billing_data?.rfc ? `RFC: ${order.billing_data.rfc}` : "",
-        order.billing_data?.business_name
-            ? `Razón social: ${order.billing_data.business_name}`
-            : "",
-    ]
-        .filter(Boolean)
-        .join("\n");
-
-    const whatsappUrl = `https://wa.me/${WHATSAPP_BILLING_NUMBER}?text=${encodeURIComponent(
-        invoiceText
-    )}`;
+    const waCount = Number(order.invoice_whatsapp_count || 0);
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-8 print:bg-white print:p-0">
@@ -73,18 +55,21 @@ export default function OrderTicket({ order }) {
                             Imprimir / Descargar
                         </button>
 
-                        <a
-                            href={whatsappUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition"
+                        <button
+                            type="button"
+                            onClick={() => triggerInvoiceWhatsapp({ order, user })}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition cursor-pointer"
                         >
                             Facturar por WhatsApp
-                        </a>
+                            {waCount > 0 && (
+                                <span className="ml-1.5 bg-white/20 px-1.5 py-0.5 rounded-full text-[10px]">
+                                    {waCount}
+                                </span>
+                            )}
+                        </button>
                     </div>
                 </div>
 
-                {/* Aviso remarcado para pago en efectivo */}
                 {isCashUnpaid ? (
                     <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 space-y-1">
                         <p className="text-xs font-extrabold uppercase tracking-wide text-amber-800">
@@ -107,7 +92,6 @@ export default function OrderTicket({ order }) {
                     </div>
                 )}
 
-                {/* QR + Código corto */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center rounded-2xl bg-slate-50 border border-slate-200/80 p-4">
                     <div className="sm:col-span-8 space-y-1.5">
                         <p className="text-xs font-semibold text-slate-700">
@@ -135,7 +119,6 @@ export default function OrderTicket({ order }) {
                     </div>
                 </div>
 
-                {/* Desglose completo */}
                 <div className="space-y-2">
                     <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                         Desglose de artículos
@@ -163,7 +146,6 @@ export default function OrderTicket({ order }) {
                     </div>
                 </div>
 
-                {/* Subtotal, IVA y Total */}
                 <div className="rounded-2xl bg-slate-50 p-4 space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-600">
                         <span>Subtotal</span>
@@ -181,10 +163,10 @@ export default function OrderTicket({ order }) {
 
                 <div className="flex items-center justify-between pt-2 print:hidden">
                     <Link
-                        href={route("customer.dashboard")}
+                        href={route("customer.dashboard", { tab: "orders" })}
                         className="text-xs font-semibold text-blue-600 hover:underline"
                     >
-                        Ver mis pedidos en Mi Cuenta →
+                        Ver mis compras en Mi Cuenta →
                     </Link>
                     <Link
                         href="/"
