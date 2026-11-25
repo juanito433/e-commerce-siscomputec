@@ -83,7 +83,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
-            'sku' => 'required|string|unique:products,sku,' . $product->id,
+            'sku' => 'nullable|string|unique:products,sku,' . $product->id,
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'description' => 'nullable|string',
@@ -99,7 +99,7 @@ class ProductController extends Controller
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
             'stock' => $validated['stock'],
-            'sku' => $validated['sku'],
+            'sku' => $validated['sku'] ?? null,
             'is_new' => $request->boolean('is_new'),
             'is_active' => $request->boolean('is_active'),
         ]);
@@ -120,5 +120,30 @@ class ProductController extends Controller
     {
         $product->delete();
         return redirect()->back()->with('success', '¡Producto eliminado del sistema!');
+    }
+
+    // Actualizar estado de pago y/o entrega de una orden desde el panel admin
+    public function updateOrder(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'status' => 'nullable|in:pending,preparing,ready_for_pickup,completed,cancelled',
+            'payment_status' => 'nullable|in:unpaid,pending,paid,failed,refunded',
+            'pickup_code' => 'nullable|string|max:20',
+        ]);
+
+        if (!empty($validated['payment_status'])) {
+            $order->payment_status = $validated['payment_status'];
+            if ($validated['payment_status'] === 'paid' && !$order->paid_at) {
+                $order->paid_at = now();
+            }
+        }
+
+        if (!empty($validated['status'])) {
+            $order->status = $validated['status'];
+        }
+
+        $order->save();
+
+        return redirect()->back()->with('success', 'Orden actualizada correctamente.');
     }
 }
